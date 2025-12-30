@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser take screenshot tool - captures screenshots
 pub struct BrowserTakeScreenshotTool;
@@ -153,11 +153,7 @@ impl Tool for BrowserTakeScreenshotTool {
 
         // Take the screenshot
         let screenshot_bytes = if let Some(ref element_ref_str) = input.element_ref {
-            // Element screenshot
-            let element_ref =
-                ElementRef::parse(element_ref_str).map_err(ToolError::InvalidParams)?;
-
-            // Validate the ref exists
+            // Validate the ref exists in the snapshot
             let options = SnapshotOptions::default();
             let snapshot = AccessibilitySnapshot::capture(page, options)
                 .await
@@ -167,9 +163,8 @@ impl Tool for BrowserTakeScreenshotTool {
                 ToolError::ElementNotFound(format!("Element ref '{}': {}", element_ref_str, e))
             })?;
 
-            // Build selector and screenshot element
-            let selector = format!("[data-ref='{}']", element_ref.hash);
-            let locator = page.locator(&selector);
+            // Use native ref resolution API from viewpoint 0.2.9
+            let locator = page.locator_from_ref(element_ref_str);
             locator.screenshot().capture().await.map_err(|e| {
                 ToolError::ExecutionFailed(format!("Element screenshot failed: {e}"))
             })?

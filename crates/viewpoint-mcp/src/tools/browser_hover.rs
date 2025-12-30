@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser hover tool - hovers over an element
 pub struct BrowserHoverTool;
@@ -70,10 +70,6 @@ impl Tool for BrowserHoverTool {
         let input: BrowserHoverInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
 
-        // Parse the element ref
-        let element_ref =
-            ElementRef::parse(&input.element_ref).map_err(ToolError::InvalidParams)?;
-
         // Ensure browser is initialized
         browser
             .initialize()
@@ -95,14 +91,13 @@ impl Tool for BrowserHoverTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        // Validate the ref exists
+        // Validate the ref exists in the snapshot
         snapshot.lookup(&input.element_ref).map_err(|e| {
             ToolError::ElementNotFound(format!("Element ref '{}': {}", input.element_ref, e))
         })?;
 
-        // Build selector from the ref
-        let selector = format!("[data-ref='{}']", element_ref.hash);
-        let locator = page.locator(&selector);
+        // Use native ref resolution API from viewpoint 0.2.9
+        let locator = page.locator_from_ref(&input.element_ref);
 
         // Perform the hover
         locator.hover().await.map_err(|e| {

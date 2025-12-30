@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser fill form tool - fills multiple form fields at once
 pub struct BrowserFillFormTool;
@@ -155,10 +155,6 @@ impl Tool for BrowserFillFormTool {
 
         // Fill each field
         for field in &input.fields {
-            // Parse and validate the element ref
-            let element_ref =
-                ElementRef::parse(&field.element_ref).map_err(ToolError::InvalidParams)?;
-
             // Validate the ref exists in the snapshot
             snapshot.lookup(&field.element_ref).map_err(|e| {
                 ToolError::ElementNotFound(format!(
@@ -167,9 +163,8 @@ impl Tool for BrowserFillFormTool {
                 ))
             })?;
 
-            // Build selector from the ref
-            let selector = format!("[data-ref='{}']", element_ref.hash);
-            let locator = page.locator(&selector);
+            // Use native ref resolution API from viewpoint 0.2.9
+            let locator = page.locator_from_ref(&field.element_ref);
 
             // Fill based on field type
             match field.field_type {

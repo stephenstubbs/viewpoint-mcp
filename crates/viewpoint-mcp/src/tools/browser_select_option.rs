@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser select option tool - selects options in a dropdown
 pub struct BrowserSelectOptionTool;
@@ -84,10 +84,6 @@ impl Tool for BrowserSelectOptionTool {
             ));
         }
 
-        // Parse the element ref
-        let element_ref =
-            ElementRef::parse(&input.element_ref).map_err(ToolError::InvalidParams)?;
-
         // Ensure browser is initialized
         browser
             .initialize()
@@ -109,14 +105,13 @@ impl Tool for BrowserSelectOptionTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        // Validate the ref exists
+        // Validate the ref exists in the snapshot
         snapshot.lookup(&input.element_ref).map_err(|e| {
             ToolError::ElementNotFound(format!("Element ref '{}': {}", input.element_ref, e))
         })?;
 
-        // Build selector from the ref
-        let selector = format!("[data-ref='{}']", element_ref.hash);
-        let locator = page.locator(&selector);
+        // Use native ref resolution API from viewpoint 0.2.9
+        let locator = page.locator_from_ref(&input.element_ref);
 
         // Select the options
         let select_result = if input.values.len() == 1 {

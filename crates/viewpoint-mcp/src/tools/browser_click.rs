@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser click tool - clicks an element using its ref
 pub struct BrowserClickTool;
@@ -126,10 +126,6 @@ impl Tool for BrowserClickTool {
         let input: BrowserClickInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
 
-        // Parse the element ref
-        let element_ref = ElementRef::parse(&input.element_ref)
-            .map_err(ToolError::InvalidParams)?;
-
         // Ensure browser is initialized
         browser
             .initialize()
@@ -151,19 +147,13 @@ impl Tool for BrowserClickTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        // Validate the ref exists
+        // Validate the ref exists in the snapshot
         snapshot.lookup(&input.element_ref).map_err(|e| {
             ToolError::ElementNotFound(format!("Element ref '{}': {}", input.element_ref, e))
         })?;
 
-        // Build aria snapshot selector from the ref
-        // This is a placeholder - real implementation would use CDP to click
-        // based on the accessibility tree node
-        let selector = format!("[data-ref='{}']", element_ref.hash);
-
-        // For now, try to locate and click
-        // In a real implementation, we'd use the accessibility tree to find the element
-        let locator = page.locator(&selector);
+        // Use native ref resolution API from viewpoint 0.2.9
+        let locator = page.locator_from_ref(&input.element_ref);
 
         // Perform the click based on options
         let click_result = if input.double_click {
@@ -177,14 +167,12 @@ impl Tool for BrowserClickTool {
                 let element_desc = input.element.as_deref().unwrap_or("element");
                 Ok(format!("Clicked {} [ref={}]", element_desc, input.element_ref))
             }
-            Err(_) => {
-                // Fallback: try clicking via accessibility tree directly
-                // This is where we'd implement the actual ref-to-element resolution
-                Err(ToolError::ElementNotFound(format!(
-                    "Could not click element with ref '{}'. The element may have changed since the snapshot.",
-                    input.element_ref
-                )))
-            }
+            Err(e) => Err(ToolError::ExecutionFailed(format!(
+                "Failed to click element '{}' [ref={}]: {}. The element may have changed since the snapshot.",
+                input.element.as_deref().unwrap_or("element"),
+                input.element_ref,
+                e
+            ))),
         }
     }
 }

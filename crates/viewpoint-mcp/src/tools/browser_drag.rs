@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser drag tool - drags from one element to another
 pub struct BrowserDragTool;
@@ -82,10 +82,6 @@ impl Tool for BrowserDragTool {
         let input: BrowserDragInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
 
-        // Parse element refs
-        let start_ref = ElementRef::parse(&input.start_ref).map_err(ToolError::InvalidParams)?;
-        let end_ref = ElementRef::parse(&input.end_ref).map_err(ToolError::InvalidParams)?;
-
         // Ensure browser is initialized
         browser
             .initialize()
@@ -107,7 +103,7 @@ impl Tool for BrowserDragTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        // Validate both refs exist
+        // Validate both refs exist in the snapshot
         snapshot.lookup(&input.start_ref).map_err(|e| {
             ToolError::ElementNotFound(format!("Source ref '{}': {}", input.start_ref, e))
         })?;
@@ -115,13 +111,9 @@ impl Tool for BrowserDragTool {
             ToolError::ElementNotFound(format!("Target ref '{}': {}", input.end_ref, e))
         })?;
 
-        // Build selectors
-        let source_selector = format!("[data-ref='{}']", start_ref.hash);
-        let target_selector = format!("[data-ref='{}']", end_ref.hash);
-
-        // Create locators
-        let source = page.locator(&source_selector);
-        let target = page.locator(&target_selector);
+        // Use native ref resolution API from viewpoint 0.2.9
+        let source = page.locator_from_ref(&input.start_ref);
+        let target = page.locator_from_ref(&input.end_ref);
 
         // Perform drag and drop
         source.drag_to(&target).await.map_err(|e| {

@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
-use crate::snapshot::{AccessibilitySnapshot, ElementRef, SnapshotOptions};
+use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
 /// Browser evaluate tool - executes JavaScript in page context
 pub struct BrowserEvaluateTool;
@@ -105,24 +105,19 @@ impl Tool for BrowserEvaluateTool {
 
         // Execute JavaScript based on whether an element ref is provided
         let result = if let Some(ref element_ref_str) = input.element_ref {
-            // Parse and validate the element ref
-            let element_ref =
-                ElementRef::parse(element_ref_str).map_err(ToolError::InvalidParams)?;
-
             // Capture current snapshot for validation
             let options = SnapshotOptions::default();
             let snapshot = AccessibilitySnapshot::capture(page, options)
                 .await
                 .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-            // Validate the ref exists
+            // Validate the ref exists in the snapshot
             snapshot.lookup(element_ref_str).map_err(|e| {
                 ToolError::ElementNotFound(format!("Element ref '{}': {}", element_ref_str, e))
             })?;
 
-            // Build selector from the ref
-            let selector = format!("[data-ref='{}']", element_ref.hash);
-            let locator = page.locator(&selector);
+            // Use native ref resolution API from viewpoint 0.2.9
+            let locator = page.locator_from_ref(element_ref_str);
 
             // Evaluate with element - wrap the function to receive the element
             let wrapped_js = format!(

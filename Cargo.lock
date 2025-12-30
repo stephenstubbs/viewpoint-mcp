@@ -2129,9 +2129,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.111"
+version = "2.0.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "390cc9a294ab71bdb1aa2e99d13be9c753cd2d7bd6560c77118597410c4d2e87"
+checksum = "21f182278bf2d2bcb3c88b1b08a37df029d71ce3d3ae26168e3c653b213b99d4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2575,9 +2575,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "viewpoint-cdp"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20e511f819ab97ea38985ff3197e710de6bc226277c3048c9f0dc8c7ad865ac2"
+checksum = "0ffbe3956adbd549691921d25663c314a8f5fd4e1d6ac05f8472bc22ca1eeafd"
 dependencies = [
  "futures-util",
  "reqwest",
@@ -2592,9 +2592,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-core"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6656f00fe24de5022a071dbf2faa22d3a076aba04d92a06772b41cd410cfe13"
+checksum = "3103e9f5b86ec2ab4048bcc23c6b1aaaf30ae4171b65ed303ba9eef60b3d1736"
 dependencies = [
  "base64",
  "bytes",
@@ -2618,9 +2618,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3754f09c28fa22fc9f682615073b11ce84531e68850547f7adc11aef347f0fef"
+checksum = "1b22510640d5c392d440e0b2734e8c0317049906d4fe1ce95375ebc7ae0ac9c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2633,9 +2633,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js-core"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8609032049090437af64875367eaf0178c943610e2d4e4fcaf1b2cbc95aed6"
+checksum = "505825e7ed09ccd6d65f6dab452cb4a0fcf75b43749a5e61bb66be9497150ced"
 
 [[package]]
 name = "viewpoint-mcp"
@@ -3201,9 +3201,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.3"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9747e91771f56fd7893e1164abd78febd14a670ceec257caad15e051de35f06"
+checksum = "e3280a1b827474fcd5dbef4b35a674deb52ba5c312363aef9135317df179d81b"
 
 [[package]]
 name = "zopfli"
