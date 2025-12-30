@@ -147,4 +147,19 @@ impl SnapshotElement {
     pub fn count_elements(&self) -> usize {
         1 + self.children.iter().map(Self::count_elements).sum::<usize>()
     }
+
+    /// Count both refs and elements in a single pass
+    ///
+    /// Returns `(ref_count, element_count)` for efficient counting.
+    #[must_use]
+    pub fn counts(&self) -> (usize, usize) {
+        let self_refs = usize::from(self.has_ref());
+        let (child_refs, child_elements): (usize, usize) = self
+            .children
+            .iter()
+            .map(Self::counts)
+            .fold((0, 0), |(r, e), (cr, ce)| (r + cr, e + ce));
+
+        (self_refs + child_refs, 1 + child_elements)
+    }
 }

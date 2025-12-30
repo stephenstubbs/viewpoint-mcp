@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use tracing::{debug, instrument};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -63,34 +64,74 @@ impl Tool for BrowserSnapshotTool {
         })
     }
 
+    #[instrument(skip(self, args, browser), fields(all_refs))]
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
         // Parse input
         let input: BrowserSnapshotInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
 
+        tracing::Span::current().record("all_refs", input.all_refs);
+
         // Ensure browser is initialized
+        debug!("browser_initialize: start");
         browser
             .initialize()
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
-
-        // Get active page
-        let context = browser
-            .active_context()
-            .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
-
-        let page = context
-            .active_page()
-            .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
+        debug!("browser_initialize: complete");
 
         // Get context name for multi-context ref prefixing
         let context_name = if browser.list_contexts().len() > 1 {
-            Some(context.name.clone())
+            Some(
+                browser
+                    .active_context()
+                    .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?
+                    .name
+                    .clone(),
+            )
         } else {
             None
         };
 
-        // Capture snapshot
+        // Try to get cached snapshot first
+        let context = browser
+            .active_context_mut()
+            .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
+
+        if let Some(cached) = context.get_cached_snapshot(input.all_refs) {
+            debug!("snapshot cache hit");
+
+            // Use single-pass counting
+            let (ref_count, element_count) = cached.root().counts();
+            let compact = cached.is_compact();
+
+            debug!(element_count, ref_count, "format_snapshot: cached");
+            let output = cached.format();
+
+            let mut result = format!(
+                "Page snapshot ({element_count} elements, {ref_count} refs{})\n\n{output}",
+                if compact { ", compact mode" } else { "" },
+            );
+
+            if compact {
+                result.push_str(
+                    "\n\n[Hint: Use allRefs: true to see refs for all interactive elements]",
+                );
+            }
+
+            return Ok(result);
+        }
+
+        debug!("snapshot cache miss");
+
+        // Get active page for capture
+        let page = context
+            .active_page()
+            .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
+
+        // Capture new snapshot
+        debug!("capture_snapshot: start");
+
         let options = SnapshotOptions {
             all_refs: input.all_refs,
             context: context_name,
@@ -100,20 +141,18 @@ impl Tool for BrowserSnapshotTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        // Format for output
-        let output = snapshot.format();
+        debug!("capture_snapshot: complete");
 
-        // Add metadata
-        let ref_count = snapshot.ref_count();
-        let element_count = snapshot.element_count();
+        // Use single-pass counting
+        let (ref_count, element_count) = snapshot.root().counts();
         let compact = snapshot.is_compact();
 
+        debug!(element_count, ref_count, "format_snapshot: fresh");
+        let output = snapshot.format();
+
         let mut result = format!(
-            "Page snapshot ({} elements, {} refs{})\n\n{}",
-            element_count,
-            ref_count,
+            "Page snapshot ({element_count} elements, {ref_count} refs{})\n\n{output}",
             if compact { ", compact mode" } else { "" },
-            output
         );
 
         // Add usage hint if in compact mode
@@ -122,6 +161,12 @@ impl Tool for BrowserSnapshotTool {
                 "\n\n[Hint: Use allRefs: true to see refs for all interactive elements]",
             );
         }
+
+        // Cache the snapshot for future requests
+        let context = browser
+            .active_context_mut()
+            .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
+        context.cache_snapshot(snapshot, input.all_refs);
 
         Ok(result)
     }

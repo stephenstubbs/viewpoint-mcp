@@ -1,6 +1,7 @@
 //! Snapshot formatting for LLM consumption
 
 use std::fmt::Write;
+use std::sync::LazyLock;
 
 use super::element::SnapshotElement;
 
@@ -9,6 +10,19 @@ const MAX_TEXT_LENGTH: usize = 100;
 
 /// Default indentation string
 const INDENT: &str = "  ";
+
+/// Maximum pre-allocated depth for indent strings
+const MAX_PREALLOC_DEPTH: usize = 32;
+
+/// Estimated bytes per element for buffer pre-allocation
+const ESTIMATED_BYTES_PER_ELEMENT: usize = 80;
+
+/// Pre-allocated indent strings for common depths (0 to MAX_PREALLOC_DEPTH)
+static INDENT_CACHE: LazyLock<Vec<String>> = LazyLock::new(|| {
+    (0..=MAX_PREALLOC_DEPTH)
+        .map(|depth| INDENT.repeat(depth))
+        .collect()
+});
 
 /// Formatter for accessibility snapshots
 #[derive(Debug, Default)]
@@ -51,7 +65,18 @@ impl SnapshotFormatter {
     /// Format a snapshot element tree as indented text
     #[must_use]
     pub fn format(&self, root: &SnapshotElement) -> String {
-        let mut output = String::new();
+        self.format_with_hint(root, None)
+    }
+
+    /// Format a snapshot element tree with an optional element count hint for buffer sizing
+    #[must_use]
+    pub fn format_with_hint(&self, root: &SnapshotElement, element_count_hint: Option<usize>) -> String {
+        // Pre-allocate output buffer based on element count
+        let capacity = element_count_hint
+            .map(|count| count * ESTIMATED_BYTES_PER_ELEMENT)
+            .unwrap_or(1024);
+        let mut output = String::with_capacity(capacity);
+
         self.format_element(&mut output, root, 0);
 
         if self.compact_mode {
@@ -70,7 +95,12 @@ impl SnapshotFormatter {
             return;
         }
 
-        let indent = INDENT.repeat(depth);
+        // Use pre-allocated indent string if available, otherwise compute it
+        let indent: std::borrow::Cow<'static, str> = if depth <= MAX_PREALLOC_DEPTH {
+            std::borrow::Cow::Borrowed(&INDENT_CACHE[depth])
+        } else {
+            std::borrow::Cow::Owned(INDENT.repeat(depth))
+        };
 
         // Format the element line
         output.push_str(&indent);

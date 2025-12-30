@@ -341,3 +341,30 @@ fn test_element_count_total() {
 
     assert_eq!(parent.count_elements(), 5); // parent + 3 children + 1 grandchild
 }
+
+#[test]
+fn test_element_counts_single_pass() {
+    let child1 = SnapshotElement::new("button")
+        .with_name("Button 1")
+        .with_ref(ElementRef::new("btn1"));
+    let child2 = SnapshotElement::new("link")
+        .with_name("Link 1")
+        .with_ref(ElementRef::new("link1"));
+    let child3 = SnapshotElement::new("heading").with_name("Title"); // no ref
+    let grandchild = SnapshotElement::new("text"); // no ref
+
+    let parent = SnapshotElement::new("main")
+        .with_child(child1)
+        .with_child(child2)
+        .with_child(child3.with_child(grandchild));
+
+    let (ref_count, element_count) = parent.counts();
+
+    // Verify single-pass counts match individual method results
+    assert_eq!(ref_count, parent.count_refs());
+    assert_eq!(element_count, parent.count_elements());
+
+    // Also verify specific values
+    assert_eq!(ref_count, 2); // button and link have refs
+    assert_eq!(element_count, 5); // parent + 3 children + 1 grandchild
+}
