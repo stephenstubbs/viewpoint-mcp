@@ -113,12 +113,13 @@ impl Tool for BrowserSelectOptionTool {
         // Use native ref resolution API from viewpoint 0.2.9
         let locator = page.locator_from_ref(&input.element_ref);
 
-        // Select the options
+        // Select the options using the new builder API from viewpoint 0.2.10
+        // Navigation waiting is automatic by default
         let select_result = if input.values.len() == 1 {
-            locator.select_option(&input.values[0]).await
+            locator.select_option().value(&input.values[0]).await
         } else {
             let values_slice: Vec<&str> = input.values.iter().map(String::as_str).collect();
-            locator.select_options(&values_slice).await
+            locator.select_option().values(&values_slice).await
         };
 
         select_result.map_err(|e| {

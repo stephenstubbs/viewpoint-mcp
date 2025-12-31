@@ -199,7 +199,8 @@ impl Tool for BrowserFillFormTool {
                     })?;
                 }
                 FieldType::Combobox => {
-                    locator.select_option(&field.value).await.map_err(|e| {
+                    // Use the new builder API from viewpoint 0.2.10
+                    locator.select_option().value(&field.value).await.map_err(|e| {
                         ToolError::ExecutionFailed(format!(
                             "Failed to select option in '{}': {}",
                             field.name, e
