@@ -5,11 +5,11 @@ use std::collections::HashMap;
 use viewpoint_core::page::locator::aria::AriaSnapshot as VpAriaSnapshot;
 use viewpoint_core::Page;
 
-use super::classification::{is_interactive_container, should_receive_ref};
+use super::classification::is_interactive_container;
 use super::element::{CheckedState, SnapshotElement};
 use super::error::{SnapshotError, SnapshotResult};
 use super::format::SnapshotFormatter;
-use super::reference::{ElementRef, RefGenerator};
+use super::reference::ElementRef;
 use super::stale::StaleRefDetector;
 
 /// Threshold for switching to compact mode
@@ -31,7 +31,7 @@ pub struct AccessibilitySnapshot {
     /// The root element of the snapshot tree
     root: SnapshotElement,
 
-    /// Map from ref hash to element (for lookup)
+    /// Map from ref string (e.g., "e12345") to ElementRef (for lookup)
     ref_map: HashMap<String, ElementRef>,
 
     /// Whether compact mode is active
@@ -57,26 +57,17 @@ impl AccessibilitySnapshot {
     ///
     /// Returns an error if the accessibility tree cannot be captured
     pub async fn capture(page: &Page, options: SnapshotOptions) -> SnapshotResult<Self> {
-        // Capture aria snapshot with frame content stitched in
+        // Capture aria snapshot with refs, including iframe content
         let aria_snapshot = page
             .aria_snapshot_with_frames()
             .await
             .map_err(|e| SnapshotError::CaptureError(e.to_string()))?;
 
-        // Convert to our internal representation
-        let ref_generator = match &options.context {
-            Some(ctx) => RefGenerator::with_context(ctx),
-            None => RefGenerator::new(),
-        };
-
         let mut ref_map = HashMap::new();
         let root = Self::convert_aria_snapshot(
             &aria_snapshot,
-            &ref_generator,
             &mut ref_map,
-            false, // not in interactive container initially
-            "",    // empty DOM path
-            options.all_refs,
+            options.context.as_deref(),
         );
 
         // Determine if we need compact mode
@@ -103,19 +94,18 @@ impl AccessibilitySnapshot {
     }
 
     /// Convert a viewpoint `AriaSnapshot` to our internal representation
+    ///
+    /// Uses viewpoint-core's native `node_ref` field which provides refs in the
+    /// correct format (`e{backendNodeId}`) for use with `locator_from_ref()`.
     fn convert_aria_snapshot(
         aria: &VpAriaSnapshot,
-        ref_gen: &RefGenerator,
         ref_map: &mut HashMap<String, ElementRef>,
-        in_interactive_container: bool,
-        dom_path: &str,
-        all_refs: bool,
+        context: Option<&str>,
     ) -> SnapshotElement {
         let role = aria.role.clone().unwrap_or_else(|| "none".to_string());
-        let name = aria.name.clone();
 
         let mut element = SnapshotElement::new(&role);
-        element.name.clone_from(&name);
+        element.name.clone_from(&aria.name);
         element.description.clone_from(&aria.description);
         element.disabled = aria.disabled.unwrap_or(false);
         element.expanded = aria.expanded;
@@ -124,7 +114,6 @@ impl AccessibilitySnapshot {
         element.level = aria.level;
         element.value = aria.value_now;
         element.is_frame = aria.is_frame.unwrap_or(false);
-        element.dom_path = dom_path.to_string();
 
         // Convert checked state
         if let Some(checked) = &aria.checked {
@@ -135,38 +124,27 @@ impl AccessibilitySnapshot {
             });
         }
 
-        // Determine if this element should receive a ref
-        let is_container = is_interactive_container(&role);
-        let should_ref = all_refs || should_receive_ref(&role, in_interactive_container, false);
-
-        if should_ref {
-            // Generate ref
-            let element_ref = ref_gen.generate(
-                element.attributes.id.as_deref(),
-                element.attributes.test_id.as_deref(),
-                element.attributes.name.as_deref(),
-                &role,
-                name.as_deref(),
-                dom_path,
-            );
-            ref_map.insert(element_ref.hash.clone(), element_ref.clone());
+        // Use viewpoint-core's native ref if available
+        // The node_ref field provides refs in the format `e{backendNodeId}`
+        // which is exactly what `locator_from_ref()` expects
+        if let Some(ref_string) = &aria.node_ref {
+            let element_ref = match context {
+                Some(ctx) => ElementRef::with_context(ref_string, ctx),
+                None => ElementRef::new(ref_string),
+            };
+            ref_map.insert(ref_string.clone(), element_ref.clone());
             element.element_ref = Some(element_ref);
         }
 
-        // Process children
-        let child_in_container = in_interactive_container || is_container;
-        for (i, child) in aria.children.iter().enumerate() {
-            let child_path = format!("{dom_path}/{i}");
-            let child_element = Self::convert_aria_snapshot(
-                child,
-                ref_gen,
-                ref_map,
-                child_in_container,
-                &child_path,
-                all_refs,
-            );
+        // Process children recursively
+        let is_container = is_interactive_container(&role);
+        for child in &aria.children {
+            let child_element = Self::convert_aria_snapshot(child, ref_map, context);
             element.children.push(child_element);
         }
+
+        // Track container status for potential future use
+        element.is_interactive_container = is_container;
 
         element
     }
@@ -178,8 +156,8 @@ impl AccessibilitySnapshot {
     }
 
     /// Look up an element by its reference
-    pub fn lookup(&self, ref_string: &str) -> SnapshotResult<&ElementRef> {
-        let element_ref = ElementRef::parse(ref_string)
+    pub fn lookup(&self, ref_str: &str) -> SnapshotResult<&ElementRef> {
+        let element_ref = ElementRef::parse(ref_str)
             .map_err(SnapshotError::InvalidRefFormat)?;
 
         // Validate against stale detector
@@ -187,9 +165,10 @@ impl AccessibilitySnapshot {
             return Err(SnapshotError::StaleRef(stale_err.to_string()));
         }
 
+        // Look up by the raw ref string (e.g., "e12345")
         self.ref_map
-            .get(&element_ref.hash)
-            .ok_or_else(|| SnapshotError::RefNotFound(ref_string.to_string()))
+            .get(element_ref.ref_string())
+            .ok_or_else(|| SnapshotError::RefNotFound(ref_str.to_string()))
     }
 
     /// Get the root element

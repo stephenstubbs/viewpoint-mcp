@@ -101,6 +101,11 @@ pub fn classify_role(role: &str) -> ElementTier {
 }
 
 /// Check if a role should receive a ref based on tier and context
+///
+/// Note: This function is primarily used for testing and documentation.
+/// In production, viewpoint-core's `node_ref` field determines which elements
+/// receive refs.
+#[allow(dead_code)]
 #[must_use]
 pub fn should_receive_ref(
     role: &str,

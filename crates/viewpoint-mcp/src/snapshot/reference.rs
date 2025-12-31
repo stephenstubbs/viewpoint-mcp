@@ -1,78 +1,111 @@
 //! Element reference system for stable element identification
+//!
+//! This module provides the `ElementRef` type which wraps viewpoint-core's native
+//! element references in the format `e{backendNodeId}`.
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-/// An element reference for targeting elements in tool calls
+/// An element reference for targeting elements in tool calls.
+///
+/// References use viewpoint-core's native format: `e{backendNodeId}` where
+/// `backendNodeId` is the CDP backend node identifier.
+///
+/// In multi-context mode, refs may include a context prefix: `clean:e12345`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ElementRef {
-    /// The hash-based identifier (4-6 characters)
-    pub hash: String,
+    /// The viewpoint-core ref string (e.g., "e12345")
+    ref_string: String,
 
     /// Optional context prefix for multi-context mode
-    pub context: Option<String>,
+    context: Option<String>,
 }
 
 impl ElementRef {
-    /// Create a new element reference
+    /// Create a new element reference from a viewpoint-core ref string.
+    ///
+    /// The ref string should be in the format `e{backendNodeId}` as provided
+    /// by viewpoint-core's `AriaSnapshot.node_ref` field.
     #[must_use]
-    pub fn new(hash: impl Into<String>) -> Self {
+    pub fn new(ref_string: impl Into<String>) -> Self {
         Self {
-            hash: hash.into(),
+            ref_string: ref_string.into(),
             context: None,
         }
     }
 
     /// Create a new element reference with context prefix
     #[must_use]
-    pub fn with_context(hash: impl Into<String>, context: impl Into<String>) -> Self {
+    pub fn with_context(ref_string: impl Into<String>, context: impl Into<String>) -> Self {
         Self {
-            hash: hash.into(),
+            ref_string: ref_string.into(),
             context: Some(context.into()),
         }
     }
 
-    /// Format the reference as a string
+    /// Get the raw ref string (e.g., "e12345")
+    ///
+    /// This is the format expected by `page.locator_from_ref()`.
+    #[must_use]
+    pub fn ref_string(&self) -> &str {
+        &self.ref_string
+    }
+
+    /// Format the reference as a string for display
+    ///
+    /// Returns the ref with optional context prefix (e.g., "clean:e12345" or "e12345")
     #[must_use]
     pub fn to_ref_string(&self) -> String {
         match &self.context {
-            Some(ctx) => format!("{}:e{}", ctx, self.hash),
-            None => format!("e{}", self.hash),
+            Some(ctx) => format!("{}:{}", ctx, self.ref_string),
+            None => self.ref_string.clone(),
         }
     }
 
     /// Parse a reference string into an `ElementRef`
     ///
+    /// Accepts formats:
+    /// - `e{backendNodeId}` (e.g., "e12345")
+    /// - `{context}:e{backendNodeId}` (e.g., "clean:e12345")
+    ///
     /// # Errors
     ///
     /// Returns an error if the format is invalid
     pub fn parse(s: &str) -> Result<Self, String> {
-        // Check for context prefix (e.g., "clean:e1a2b")
+        // Check for context prefix (e.g., "clean:e12345")
         if let Some((context, rest)) = s.split_once(':') {
-            if let Some(hash) = rest.strip_prefix('e')
-                && !hash.is_empty() {
+            if rest.starts_with('e') && rest.len() > 1 {
+                // Validate that the part after 'e' is a valid number
+                let id_part = &rest[1..];
+                if id_part.chars().all(|c| c.is_ascii_digit()) {
                     return Ok(Self {
-                        hash: hash.to_string(),
+                        ref_string: rest.to_string(),
                         context: Some(context.to_string()),
                     });
                 }
+            }
             return Err(format!(
-                "Invalid reference format: '{s}'. Expected format: e<hash> or <context>:e<hash>"
+                "Invalid reference format: '{s}'. Expected format: e{{backendNodeId}} or {{context}}:e{{backendNodeId}}"
             ));
         }
 
-        // No context prefix (e.g., "e1a2b")
-        if let Some(hash) = s.strip_prefix('e')
-            && !hash.is_empty() {
+        // No context prefix (e.g., "e12345")
+        if s.starts_with('e') && s.len() > 1 {
+            let id_part = &s[1..];
+            if id_part.chars().all(|c| c.is_ascii_digit()) {
                 return Ok(Self {
-                    hash: hash.to_string(),
+                    ref_string: s.to_string(),
                     context: None,
                 });
             }
+        }
 
         Err(format!(
-            "Invalid reference format: '{s}'. Expected format: e<hash> or <context>:e<hash>"
+            "Invalid reference format: '{s}'. Expected format: e{{backendNodeId}} or {{context}}:e{{backendNodeId}}"
         ))
+    }
+
+    /// Get the context name if present
+    #[must_use]
+    pub fn context(&self) -> Option<&str> {
+        self.context.as_deref()
     }
 }
 
@@ -82,102 +115,53 @@ impl std::fmt::Display for ElementRef {
     }
 }
 
-/// Generator for stable element references
-#[derive(Debug, Default)]
-pub struct RefGenerator {
-    /// Context name for multi-context mode
-    context: Option<String>,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl RefGenerator {
-    /// Create a new reference generator
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+    #[test]
+    fn test_parse_simple_ref() {
+        let element_ref = ElementRef::parse("e12345").unwrap();
+        assert_eq!(element_ref.ref_string(), "e12345");
+        assert_eq!(element_ref.context(), None);
+        assert_eq!(element_ref.to_ref_string(), "e12345");
     }
 
-    /// Create a generator with a context prefix
-    #[must_use]
-    pub fn with_context(context: impl Into<String>) -> Self {
-        Self {
-            context: Some(context.into()),
-        }
+    #[test]
+    fn test_parse_ref_with_context() {
+        let element_ref = ElementRef::parse("clean:e12345").unwrap();
+        assert_eq!(element_ref.ref_string(), "e12345");
+        assert_eq!(element_ref.context(), Some("clean"));
+        assert_eq!(element_ref.to_ref_string(), "clean:e12345");
     }
 
-    /// Generate a reference for an element based on its attributes
-    ///
-    /// Priority:
-    /// 1. `id` attribute (most stable)
-    /// 2. `data-testid` or `data-test` attribute
-    /// 3. `name` attribute
-    /// 4. Fallback: role + name + DOM path
-    #[must_use]
-    pub fn generate(
-        &self,
-        id: Option<&str>,
-        test_id: Option<&str>,
-        name_attr: Option<&str>,
-        role: &str,
-        accessible_name: Option<&str>,
-        dom_path: &str,
-    ) -> ElementRef {
-        let hash = Self::compute_hash(id, test_id, name_attr, role, accessible_name, dom_path);
-        ElementRef {
-            hash,
-            context: self.context.clone(),
-        }
+    #[test]
+    fn test_parse_invalid_no_prefix() {
+        let result = ElementRef::parse("12345");
+        assert!(result.is_err());
     }
 
-    /// Compute a stable hash from element attributes
-    fn compute_hash(
-        id: Option<&str>,
-        test_id: Option<&str>,
-        name_attr: Option<&str>,
-        role: &str,
-        accessible_name: Option<&str>,
-        dom_path: &str,
-    ) -> String {
-        let mut hasher = DefaultHasher::new();
-
-        // Priority 1: Use id attribute
-        if let Some(id) = id
-            && !id.is_empty() {
-                "id:".hash(&mut hasher);
-                id.hash(&mut hasher);
-                return Self::format_hash(hasher.finish());
-            }
-
-        // Priority 2: Use test id
-        if let Some(test_id) = test_id
-            && !test_id.is_empty() {
-                "testid:".hash(&mut hasher);
-                test_id.hash(&mut hasher);
-                return Self::format_hash(hasher.finish());
-            }
-
-        // Priority 3: Use name attribute
-        if let Some(name) = name_attr
-            && !name.is_empty() {
-                "name:".hash(&mut hasher);
-                name.hash(&mut hasher);
-                return Self::format_hash(hasher.finish());
-            }
-
-        // Priority 4: Fallback to role + accessible name + DOM path
-        "fallback:".hash(&mut hasher);
-        role.hash(&mut hasher);
-        if let Some(name) = accessible_name {
-            name.hash(&mut hasher);
-        }
-        dom_path.hash(&mut hasher);
-
-        Self::format_hash(hasher.finish())
+    #[test]
+    fn test_parse_invalid_non_numeric() {
+        let result = ElementRef::parse("eabc123");
+        assert!(result.is_err());
     }
 
-    /// Format a hash as a 4-6 character hex string
-    fn format_hash(hash: u64) -> String {
-        // Take lower 24 bits for a 6-character hex string
-        let short_hash = hash & 0x00FF_FFFF;
-        format!("{short_hash:06x}")
+    #[test]
+    fn test_parse_invalid_empty() {
+        let result = ElementRef::parse("e");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_and_display() {
+        let element_ref = ElementRef::new("e42");
+        assert_eq!(format!("{}", element_ref), "e42");
+    }
+
+    #[test]
+    fn test_with_context() {
+        let element_ref = ElementRef::with_context("e42", "main");
+        assert_eq!(element_ref.to_ref_string(), "main:e42");
     }
 }

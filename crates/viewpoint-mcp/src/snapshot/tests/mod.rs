@@ -3,7 +3,7 @@
 use crate::snapshot::classification::{classify_role, should_receive_ref, ElementTier};
 use crate::snapshot::element::SnapshotElement;
 use crate::snapshot::format::SnapshotFormatter;
-use crate::snapshot::reference::{ElementRef, RefGenerator};
+use crate::snapshot::reference::ElementRef;
 use crate::snapshot::stale::{StaleRefDetector, StaleRefError};
 
 // =============================================================================
@@ -95,82 +95,53 @@ fn test_should_receive_ref_with_tabindex() {
 
 #[test]
 fn test_element_ref_format() {
-    let element_ref = ElementRef::new("abc123");
-    assert_eq!(element_ref.to_ref_string(), "eabc123");
+    // ElementRef now stores the full ref string as provided by viewpoint-core
+    let element_ref = ElementRef::new("e12345");
+    assert_eq!(element_ref.to_ref_string(), "e12345");
+    assert_eq!(element_ref.ref_string(), "e12345");
 }
 
 #[test]
 fn test_element_ref_with_context() {
-    let element_ref = ElementRef::with_context("abc123", "clean");
-    assert_eq!(element_ref.to_ref_string(), "clean:eabc123");
+    let element_ref = ElementRef::with_context("e12345", "clean");
+    assert_eq!(element_ref.to_ref_string(), "clean:e12345");
+    assert_eq!(element_ref.ref_string(), "e12345");
+    assert_eq!(element_ref.context(), Some("clean"));
 }
 
 #[test]
 fn test_element_ref_parse_simple() {
-    let parsed = ElementRef::parse("e1a2b3").unwrap();
-    assert_eq!(parsed.hash, "1a2b3");
-    assert!(parsed.context.is_none());
+    let parsed = ElementRef::parse("e12345").unwrap();
+    assert_eq!(parsed.ref_string(), "e12345");
+    assert!(parsed.context().is_none());
 }
 
 #[test]
 fn test_element_ref_parse_with_context() {
-    let parsed = ElementRef::parse("clean:e1a2b3").unwrap();
-    assert_eq!(parsed.hash, "1a2b3");
-    assert_eq!(parsed.context, Some("clean".to_string()));
+    let parsed = ElementRef::parse("clean:e12345").unwrap();
+    assert_eq!(parsed.ref_string(), "e12345");
+    assert_eq!(parsed.context(), Some("clean"));
 }
 
 #[test]
 fn test_element_ref_parse_invalid() {
+    // Invalid: must start with 'e' followed by digits
     assert!(ElementRef::parse("invalid").is_err());
     assert!(ElementRef::parse("e").is_err());
     assert!(ElementRef::parse("").is_err());
     assert!(ElementRef::parse("ctx:invalid").is_err());
+    // Invalid: hash-based refs are no longer supported
+    assert!(ElementRef::parse("eabc123").is_err());
+    assert!(ElementRef::parse("e1a2b3").is_err());
 }
 
 #[test]
-fn test_ref_generator_hash_stability() {
-    let generator = RefGenerator::new();
-
-    // Same inputs should produce same hash
-    let ref1 = generator.generate(Some("my-id"), None, None, "button", Some("Submit"), "/0/1");
-    let ref2 = generator.generate(Some("my-id"), None, None, "button", Some("Submit"), "/0/1");
-    assert_eq!(ref1.hash, ref2.hash);
-}
-
-#[test]
-fn test_ref_generator_id_priority() {
-    let generator = RefGenerator::new();
-
-    // ID takes priority over other attributes
-    let ref_with_id = generator.generate(
-        Some("submit-btn"),
-        Some("test-submit"),
-        Some("submit"),
-        "button",
-        Some("Submit"),
-        "/0/1",
-    );
-
-    let ref_without_id = generator.generate(
-        None,
-        Some("test-submit"),
-        Some("submit"),
-        "button",
-        Some("Submit"),
-        "/0/1",
-    );
-
-    assert_ne!(ref_with_id.hash, ref_without_id.hash);
-}
-
-#[test]
-fn test_ref_generator_with_context() {
-    let generator = RefGenerator::with_context("uk");
-
-    let element_ref = generator.generate(Some("my-id"), None, None, "button", Some("Submit"), "/0/1");
-
-    assert_eq!(element_ref.context, Some("uk".to_string()));
-    assert!(element_ref.to_ref_string().starts_with("uk:e"));
+fn test_element_ref_parse_valid_formats() {
+    // Valid viewpoint-core format: e{backendNodeId}
+    assert!(ElementRef::parse("e1").is_ok());
+    assert!(ElementRef::parse("e12345").is_ok());
+    assert!(ElementRef::parse("e999999").is_ok());
+    assert!(ElementRef::parse("main:e42").is_ok());
 }
 
 // =============================================================================
@@ -193,12 +164,12 @@ fn test_format_element_with_ref() {
     let element =
         SnapshotElement::new("button")
             .with_name("Submit")
-            .with_ref(ElementRef::new("abc123"));
+            .with_ref(ElementRef::new("e12345"));
 
     let formatter = SnapshotFormatter::new();
     let output = formatter.format(&element);
 
-    assert!(output.contains("[ref=eabc123]"));
+    assert!(output.contains("[ref=e12345]"));
 }
 
 #[test]
@@ -236,11 +207,11 @@ fn test_stale_detector_valid_ref() {
     let element =
         SnapshotElement::new("button")
             .with_name("Submit")
-            .with_ref(ElementRef::new("abc123"));
+            .with_ref(ElementRef::new("e12345"));
 
     detector.update(&element);
 
-    let result = detector.validate_ref(&ElementRef::new("abc123"));
+    let result = detector.validate_ref(&ElementRef::new("e12345"));
     assert!(result.is_ok());
 }
 
@@ -252,14 +223,14 @@ fn test_stale_detector_removed_element() {
     let element1 =
         SnapshotElement::new("button")
             .with_name("Submit")
-            .with_ref(ElementRef::new("abc123"));
+            .with_ref(ElementRef::new("e12345"));
     detector.update(&element1);
 
     // Second snapshot doesn't have it
     let element2 = SnapshotElement::new("document");
     detector.update(&element2);
 
-    let result = detector.validate_ref(&ElementRef::new("abc123"));
+    let result = detector.validate_ref(&ElementRef::new("e12345"));
     assert!(matches!(result, Err(StaleRefError::ElementRemoved { .. })));
 }
 
@@ -271,16 +242,16 @@ fn test_stale_detector_element_changed() {
     let element1 =
         SnapshotElement::new("button")
             .with_name("Submit")
-            .with_ref(ElementRef::new("abc123"));
+            .with_ref(ElementRef::new("e12345"));
     detector.update(&element1);
 
     // Second snapshot - same ref but role changed
     let mut element2 = SnapshotElement::new("link");
     element2.name = Some("Submit".to_string());
-    element2.element_ref = Some(ElementRef::new("abc123"));
+    element2.element_ref = Some(ElementRef::new("e12345"));
     detector.update(&element2);
 
-    let result = detector.validate_ref(&ElementRef::new("abc123"));
+    let result = detector.validate_ref(&ElementRef::new("e12345"));
     assert!(matches!(result, Err(StaleRefError::ElementChanged { .. })));
 }
 
@@ -292,16 +263,16 @@ fn test_stale_detector_minor_change() {
     let element1 =
         SnapshotElement::new("button")
             .with_name("Submit (0)")
-            .with_ref(ElementRef::new("abc123"));
+            .with_ref(ElementRef::new("e12345"));
     detector.update(&element1);
 
     // Second snapshot - same role but name changed
     let mut element2 = SnapshotElement::new("button");
     element2.name = Some("Submit (1)".to_string());
-    element2.element_ref = Some(ElementRef::new("abc123"));
+    element2.element_ref = Some(ElementRef::new("e12345"));
     detector.update(&element2);
 
-    let result = detector.validate_ref(&ElementRef::new("abc123"));
+    let result = detector.validate_ref(&ElementRef::new("e12345"));
     assert!(matches!(result, Err(StaleRefError::MinorChange { .. })));
 }
 
@@ -313,10 +284,10 @@ fn test_stale_detector_minor_change() {
 fn test_element_count_refs() {
     let child1 = SnapshotElement::new("button")
         .with_name("Button 1")
-        .with_ref(ElementRef::new("btn1"));
+        .with_ref(ElementRef::new("e1"));
     let child2 = SnapshotElement::new("link")
         .with_name("Link 1")
-        .with_ref(ElementRef::new("link1"));
+        .with_ref(ElementRef::new("e2"));
     let child3 = SnapshotElement::new("heading").with_name("Title"); // no ref
 
     let parent = SnapshotElement::new("main")
@@ -346,10 +317,10 @@ fn test_element_count_total() {
 fn test_element_counts_single_pass() {
     let child1 = SnapshotElement::new("button")
         .with_name("Button 1")
-        .with_ref(ElementRef::new("btn1"));
+        .with_ref(ElementRef::new("e1"));
     let child2 = SnapshotElement::new("link")
         .with_name("Link 1")
-        .with_ref(ElementRef::new("link1"));
+        .with_ref(ElementRef::new("e2"));
     let child3 = SnapshotElement::new("heading").with_name("Title"); // no ref
     let grandchild = SnapshotElement::new("text"); // no ref
 

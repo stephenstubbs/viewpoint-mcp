@@ -94,7 +94,7 @@ pub struct SimilarElement {
 /// Stored snapshot info for comparison
 #[derive(Debug, Clone)]
 pub struct SnapshotInfo {
-    /// Map from ref hash to element info
+    /// Map from ref string (e.g., "e12345") to element info
     pub elements: HashMap<String, StoredElementInfo>,
 }
 
@@ -139,13 +139,13 @@ impl StaleRefDetector {
             return Ok(()); // No snapshot to validate against
         };
 
-        let hash = &element_ref.hash;
+        let ref_str = element_ref.ref_string();
 
         // Check if element exists in current snapshot
-        if let Some(current_info) = current.elements.get(hash) {
+        if let Some(current_info) = current.elements.get(ref_str) {
             // Element exists - check if it changed from previous
             if let Some(previous) = &self.previous
-                && let Some(previous_info) = previous.elements.get(hash) {
+                && let Some(previous_info) = previous.elements.get(ref_str) {
                     // Compare for significant changes
                     if current_info.role != previous_info.role {
                         return Err(StaleRefError::ElementChanged {
@@ -170,13 +170,13 @@ impl StaleRefDetector {
             Ok(())
         } else {
             // Element not found - find similar elements
-            let similar = Self::find_similar_elements(hash);
+            let similar = Self::find_similar_elements(ref_str);
 
             // Get original description from previous snapshot if available
             let original_description = self
                 .previous
                 .as_ref()
-                .and_then(|p| p.elements.get(hash)).map_or_else(|| format!("element {}", element_ref.to_ref_string()), |info| info.description.clone());
+                .and_then(|p| p.elements.get(ref_str)).map_or_else(|| format!("element {}", element_ref.to_ref_string()), |info| info.description.clone());
 
             Err(StaleRefError::ElementRemoved {
                 ref_string: element_ref.to_ref_string(),
@@ -187,7 +187,7 @@ impl StaleRefDetector {
     }
 
     /// Find elements similar to a missing ref
-    fn find_similar_elements(_target_hash: &str) -> Vec<SimilarElement> {
+    fn find_similar_elements(_target_ref: &str) -> Vec<SimilarElement> {
         // For now, return empty - could implement fuzzy matching later
         Vec::new()
     }
@@ -210,8 +210,9 @@ impl StaleRefDetector {
             .trim()
             .to_string();
 
+            // Store using the raw ref string (e.g., "e12345")
             map.insert(
-                element_ref.hash.clone(),
+                element_ref.ref_string().to_string(),
                 StoredElementInfo {
                     role: element.role.clone(),
                     name: element.name.clone(),

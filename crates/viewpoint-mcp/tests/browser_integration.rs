@@ -336,11 +336,17 @@ async fn test_accessibility_snapshot_basic() {
     let ctx = state.active_context().expect("Should have context");
     let page = ctx.active_page().expect("Should have page");
 
-    // Navigate to a simple HTML page via data URL
-    page.goto("data:text/html,<html><body><h1>Test Page</h1><button id='btn'>Click me</button><input type='text' placeholder='Enter text'></body></html>")
-        .goto()
+    // Set page content (using set_content like viewpoint-core tests for proper DOM access)
+    page.set_content(r#"
+        <html><body>
+            <h1>Test Page</h1>
+            <button id="btn">Click me</button>
+            <input type="text" placeholder="Enter text">
+        </body></html>
+    "#)
+        .set()
         .await
-        .expect("Failed to navigate");
+        .expect("Failed to set content");
 
     // Capture accessibility snapshot
     let options = SnapshotOptions::default();
@@ -358,8 +364,10 @@ async fn test_accessibility_snapshot_basic() {
     assert!(formatted.contains("textbox"), "Should contain textbox");
 
     // Interactive elements should have refs
+    // Note: Refs are provided by viewpoint-core's aria_snapshot API
+    // which uses backendNodeId from CDP
     assert!(snapshot.ref_count() > 0, "Should have refs for interactive elements");
-    assert!(formatted.contains("[ref="), "Should have ref annotations");
+    assert!(formatted.contains("[ref=e"), "Should have ref annotations");
 
     state.shutdown().await;
 }

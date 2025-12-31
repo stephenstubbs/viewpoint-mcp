@@ -41,30 +41,11 @@ pub struct SnapshotElement {
     /// Whether this element is a frame boundary (iframe)
     pub is_frame: bool,
 
+    /// Whether this element is an interactive container
+    pub is_interactive_container: bool,
+
     /// Child elements
     pub children: Vec<Self>,
-
-    /// DOM path for fallback identification
-    pub dom_path: String,
-
-    /// Element attributes for ref generation
-    pub attributes: ElementAttributes,
-}
-
-/// Element attributes used for stable ref generation
-#[derive(Debug, Clone, Default)]
-pub struct ElementAttributes {
-    /// The id attribute
-    pub id: Option<String>,
-
-    /// The data-testid or data-test attribute
-    pub test_id: Option<String>,
-
-    /// The name attribute
-    pub name: Option<String>,
-
-    /// Whether the element has tabindex >= 0
-    pub has_tabindex: bool,
 }
 
 /// Checked state for checkboxes and similar elements
@@ -95,9 +76,8 @@ impl SnapshotElement {
             level: None,
             value: None,
             is_frame: false,
+            is_interactive_container: false,
             children: Vec::new(),
-            dom_path: String::new(),
-            attributes: ElementAttributes::default(),
         }
     }
 

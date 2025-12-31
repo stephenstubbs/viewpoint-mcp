@@ -19,5 +19,5 @@ pub use classification::{classify_role, ElementTier};
 pub use element::SnapshotElement;
 pub use error::{SnapshotError, SnapshotResult};
 pub use format::SnapshotFormatter;
-pub use reference::{ElementRef, RefGenerator};
+pub use reference::ElementRef;
 pub use stale::{StaleRefDetector, StaleRefError};

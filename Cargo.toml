@@ -43,8 +43,8 @@ tokio-stream = "0.1"
 hex = "0.4"
 
 # Browser automation
-viewpoint-core = "0.2.10"
-viewpoint-cdp = "0.2.10"
+viewpoint-core = "0.2.11"
+viewpoint-cdp = "0.2.11"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
