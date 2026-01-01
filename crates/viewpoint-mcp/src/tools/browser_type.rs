@@ -138,9 +138,10 @@ impl Tool for BrowserTypeTool {
             )));
         }
 
-        // Submit if requested
+        // Submit if requested - use page keyboard API for more reliable behavior
+        // The locator.press() can have issues after fill() due to focus changes
         if input.submit {
-            if let Err(e) = locator.press("Enter").await {
+            if let Err(e) = page.keyboard().press("Enter").await {
                 return Err(ToolError::ExecutionFailed(format!(
                     "Failed to press Enter: {}",
                     e
