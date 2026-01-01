@@ -66,10 +66,18 @@ impl Tool for BrowserNavigateTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active context
         let context = browser
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
+
+        // Auto-create a new page if context has no pages
+        if context.page_count() == 0 {
+            context
+                .new_page()
+                .await
+                .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create page: {e}")))?;
+        }
 
         let page = context
             .active_page()

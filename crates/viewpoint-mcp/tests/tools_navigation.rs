@@ -8,7 +8,7 @@
 
 use serde_json::json;
 use viewpoint_mcp::browser::{BrowserConfig, BrowserState};
-use viewpoint_mcp::tools::{BrowserNavigateBackTool, BrowserNavigateTool, Tool};
+use viewpoint_mcp::tools::{BrowserCloseTool, BrowserNavigateBackTool, BrowserNavigateTool, Tool};
 
 /// Helper to create a headless browser state
 async fn create_browser() -> BrowserState {
@@ -330,6 +330,37 @@ async fn test_navigate_without_browser_init() {
     
     // Should succeed because tool auto-initializes browser
     assert!(result.is_ok());
+
+    browser.shutdown().await;
+}
+
+#[tokio::test]
+async fn test_navigate_after_all_pages_closed() {
+    let mut browser = create_browser().await;
+    let navigate_tool = BrowserNavigateTool::new();
+    let close_tool = BrowserCloseTool::new();
+
+    // Navigate to a page first
+    let result = navigate_tool
+        .execute(&json!({ "url": "data:text/html,<h1>First Page</h1>" }), &mut browser)
+        .await;
+    assert!(result.is_ok());
+
+    // Close the only page
+    let result = close_tool.execute(&json!({}), &mut browser).await;
+    assert!(result.is_ok());
+    assert!(result.unwrap().contains("no pages remaining"));
+
+    // Now navigate again - should auto-create a new page
+    let result = navigate_tool
+        .execute(&json!({ "url": "data:text/html,<h1>Second Page</h1>" }), &mut browser)
+        .await;
+    assert!(result.is_ok(), "Navigate after close should succeed, got: {:?}", result);
+    assert!(result.unwrap().contains("Navigated to"));
+
+    // Verify the context now has a page
+    let context = browser.active_context().unwrap();
+    assert_eq!(context.page_count(), 1);
 
     browser.shutdown().await;
 }

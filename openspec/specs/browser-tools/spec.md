@@ -15,6 +15,13 @@ The system SHALL provide tools for page navigation.
 - **WHEN** `browser_navigate_back` is called
 - **THEN** the page navigates to the previous history entry
 
+#### Scenario: Navigate after all pages closed
+- **WHEN** all pages have been closed via `browser_close`
+- **AND** `browser_navigate` is called with a URL
+- **THEN** a new page is automatically created in the active context
+- **AND** the page navigates to the specified URL
+- **AND** the tool returns success (not an error)
+
 ### Requirement: Element Interaction Tools
 The system SHALL provide tools for interacting with page elements using accessibility refs, resolved via viewpoint's native `page.locator_from_ref()` API. After performing an action that may trigger navigation or network activity, the system SHALL wait for the page to stabilize before returning.
 
