@@ -95,8 +95,8 @@
 
       packages = forEachSupportedSystem (
         { pkgs }:
-        {
-          default = pkgs.rustPlatform.buildRustPackage {
+        let
+          basePackage = pkgs.rustPlatform.buildRustPackage {
             pname = "viewpoint-mcp";
             version = "0.1.0";
             src = ./.;
@@ -106,14 +106,20 @@
               pkg-config
             ];
 
-            buildInputs = with pkgs; [
-            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              darwin.apple_sdk.frameworks.Security
-              darwin.apple_sdk.frameworks.SystemConfiguration
-            ];
+            buildInputs =
+              with pkgs;
+              [
+              ]
+              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+                darwin.apple_sdk.frameworks.Security
+                darwin.apple_sdk.frameworks.SystemConfiguration
+              ];
 
             # Skip integration tests during nix build (they require a browser)
-            checkFlags = [ "--skip" "integration" ];
+            checkFlags = [
+              "--skip"
+              "integration"
+            ];
 
             meta = with pkgs.lib; {
               description = "MCP server for browser automation via Viewpoint";
@@ -123,6 +129,25 @@
               mainProgram = "viewpoint-mcp";
             };
           };
+
+          # Variant with bundled Chromium - uses its own isolated browser instance
+          withChromium = pkgs.symlinkJoin {
+            name = "viewpoint-mcp-with-chromium";
+            paths = [ basePackage ];
+            buildInputs = [ pkgs.makeWrapper ];
+            postBuild = ''
+              wrapProgram $out/bin/viewpoint-mcp \
+                --set CHROMIUM_PATH "${pkgs.chromium}/bin/chromium" \
+                --prefix PATH : "${pkgs.chromium}/bin"
+            '';
+            meta = basePackage.meta // {
+              description = "MCP server for browser automation via Viewpoint (with bundled Chromium)";
+            };
+          };
+        in
+        {
+          default = basePackage;
+          with-chromium = withChromium;
         }
       );
     };
