@@ -106,7 +106,11 @@ impl BrowserState {
                     .map_err(|e| BrowserError::ConnectionFailed(e.to_string()))?
             }
         } else {
-            let mut launcher = Browser::launch().headless(self.config.headless);
+            let mut launcher = Browser::launch()
+                .headless(self.config.headless)
+                // Prevent Chromium from opening its default window on startup.
+                // We create our own context and page, so the default window is unnecessary.
+                .args(["--no-startup-window"]);
 
             if let Some(ref user_data_dir) = self.config.user_data_dir {
                 launcher = launcher.user_data_dir(user_data_dir);
