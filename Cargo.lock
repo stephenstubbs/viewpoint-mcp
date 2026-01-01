@@ -647,12 +647,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
+name = "futures"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dff15bf788c671c1934e366d07e30c1814a8ef514e1af724a602e8a2fbe1b10"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -660,6 +676,34 @@ name = "futures-core"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f29059c0c2090612e8d742178b0580d2dc940c837851ad723096f87af6663e"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e28d1d997f585e54aebc3f97d39e72338912123a67330d723fdbb564d646c9f"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
+name = "futures-io"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5c1b78ca4aae1ac06c48a526a655760685149f0d465d21f37abfe57ce075c6"
+
+[[package]]
+name = "futures-macro"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "162ee34ebcb7c64a8abebc059ce0fee27c2262618d7b60ed8faf72fef13c3650"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "futures-sink"
@@ -679,9 +723,13 @@ version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fa08315bb612088cc391249efdc3bc77536f16c91f6cf495e6fbe85b20a4a81"
 dependencies = [
+ "futures-channel",
  "futures-core",
+ "futures-io",
+ "futures-macro",
  "futures-sink",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
  "slab",
@@ -2575,9 +2623,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "viewpoint-cdp"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c0f1fb6bd6f556bd96fd9c714fb1488d4c8a42bfe6c97b02a8c81da72d1a526"
+checksum = "396b30a81ce55ea63716191de7c3af435340df533ef2b9020e294e5a4063b20d"
 dependencies = [
  "futures-util",
  "reqwest",
@@ -2592,13 +2640,14 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-core"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa363db4fc74de11ebbf237bcc4bca6dfac178e441f9d9166e040e070831e2df"
+checksum = "8d0fbdbb1e2b02dcc2e1fec677ec9d99e5f531c1b71fdbd229a9e87812ba1a8f"
 dependencies = [
  "base64",
  "bytes",
  "chrono",
+ "futures",
  "glob",
  "parking_lot",
  "regex",
@@ -2619,9 +2668,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11c304e30a518d3103b8279b5632a3ceeefb0882ea1bd9d3c1321800c50dbf8a"
+checksum = "4eee7580d5e150abc4356f0a425c42a397a5bdc2016e2239bcd5be8399bf10d8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2634,9 +2683,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js-core"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7b9691892b3d096492467702962ff86b8b1de8faa19ef4eaccff332d3e11876"
+checksum = "b54eb9e3b216584b06bb8eaaecd3bf2bd7c8c29cbca0c21fd97cf008a33624a3"
 
 [[package]]
 name = "viewpoint-mcp"
