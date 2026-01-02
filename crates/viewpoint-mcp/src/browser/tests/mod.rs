@@ -67,3 +67,81 @@ async fn test_browser_state_new() {
     assert!(!state.is_initialized());
     assert_eq!(state.active_context_name(), "default");
 }
+
+// Connection loss recovery tests
+
+#[test]
+fn test_is_connection_loss_error_websocket() {
+    assert!(BrowserState::is_connection_loss_error(
+        "WebSocket connection lost"
+    ));
+    assert!(BrowserState::is_connection_loss_error(
+        "Error: WebSocket connection lost while waiting for response"
+    ));
+}
+
+#[test]
+fn test_is_connection_loss_error_variants() {
+    // Various connection loss patterns
+    assert!(BrowserState::is_connection_loss_error("ConnectionLost"));
+    assert!(BrowserState::is_connection_loss_error("connection lost"));
+    assert!(BrowserState::is_connection_loss_error("connection closed"));
+    assert!(BrowserState::is_connection_loss_error("WebSocket error"));
+    assert!(BrowserState::is_connection_loss_error("WebSocket closed"));
+    assert!(BrowserState::is_connection_loss_error("channel closed"));
+    assert!(BrowserState::is_connection_loss_error("browser disconnected"));
+    assert!(BrowserState::is_connection_loss_error(
+        "CDP connection failed"
+    ));
+}
+
+#[test]
+fn test_is_connection_loss_error_non_connection() {
+    // These should NOT trigger connection loss recovery
+    assert!(!BrowserState::is_connection_loss_error("Element not found"));
+    assert!(!BrowserState::is_connection_loss_error("Timeout waiting for selector"));
+    assert!(!BrowserState::is_connection_loss_error("Navigation failed: 404"));
+    assert!(!BrowserState::is_connection_loss_error("JavaScript error: undefined"));
+    assert!(!BrowserState::is_connection_loss_error("Invalid selector"));
+}
+
+#[test]
+fn test_reset_on_connection_loss() {
+    let config = BrowserConfig::default();
+    let mut state = BrowserState::new(config);
+
+    // Simulate initialized state (without actually launching browser)
+    // We can't test with a real browser, but we can verify state transitions
+
+    // State should start uninitialized
+    assert!(!state.is_initialized());
+    assert_eq!(state.active_context_name(), "default");
+
+    // After reset, state should be ready for re-initialization
+    state.reset_on_connection_loss();
+
+    assert!(!state.is_initialized());
+    assert!(state.browser().is_none());
+    assert_eq!(state.active_context_name(), "default");
+}
+
+#[test]
+fn test_handle_potential_connection_loss_triggers_reset() {
+    let config = BrowserConfig::default();
+    let mut state = BrowserState::new(config);
+
+    // Connection loss error should trigger reset and return true
+    let triggered = state.handle_potential_connection_loss("WebSocket connection lost");
+    assert!(triggered);
+    assert!(!state.is_initialized());
+}
+
+#[test]
+fn test_handle_potential_connection_loss_ignores_other_errors() {
+    let config = BrowserConfig::default();
+    let mut state = BrowserState::new(config);
+
+    // Non-connection errors should not trigger reset and return false
+    let triggered = state.handle_potential_connection_loss("Element not found: #button");
+    assert!(!triggered);
+}

@@ -294,13 +294,21 @@ impl McpServer {
                 }],
                 is_error: false,
             },
-            Err(e) => ToolCallResult {
-                content: vec![ToolResultContent {
-                    content_type: "text".to_string(),
-                    text: e.to_string(),
-                }],
-                is_error: true,
-            },
+            Err(e) => {
+                let error_msg = e.to_string();
+
+                // Check for connection loss and reset state if needed
+                // This allows the next tool call to re-initialize the browser
+                browser.handle_potential_connection_loss(&error_msg);
+
+                ToolCallResult {
+                    content: vec![ToolResultContent {
+                        content_type: "text".to_string(),
+                        text: error_msg,
+                    }],
+                    is_error: true,
+                }
+            }
         };
 
         Ok(serde_json::to_value(call_result)?)

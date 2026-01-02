@@ -152,6 +152,71 @@ impl BrowserState {
         self.initialized = false;
     }
 
+    /// Reset browser state after connection loss
+    ///
+    /// Unlike `shutdown()`, this method does NOT attempt to close connections
+    /// since the browser process is dead or unreachable. It simply clears
+    /// internal state to allow re-initialization on the next tool call.
+    pub fn reset_on_connection_loss(&mut self) {
+        tracing::warn!("Resetting browser state after connection loss");
+
+        // Clear contexts without attempting to close them (browser is dead)
+        self.contexts.clear();
+
+        // Drop browser reference without closing (connection is lost)
+        self.browser = None;
+
+        // Reset to uninitialized state so next tool call re-launches browser
+        self.initialized = false;
+
+        // Reset active context to default
+        self.active_context = DEFAULT_CONTEXT.to_string();
+
+        tracing::info!("Browser state reset complete, ready for re-initialization");
+    }
+
+    /// Check if an error message indicates a browser connection loss
+    ///
+    /// Returns `true` if the error message suggests the WebSocket connection
+    /// to the browser has been lost (e.g., browser crashed, killed, or timed out).
+    #[must_use]
+    pub fn is_connection_loss_error(error_msg: &str) -> bool {
+        let patterns = [
+            "WebSocket connection lost",
+            "ConnectionLost",
+            "connection lost",
+            "connection closed",
+            "WebSocket error",
+            "WebSocket closed",
+            "channel closed",
+            "browser disconnected",
+            "CDP connection",
+        ];
+
+        patterns
+            .iter()
+            .any(|pattern| error_msg.contains(pattern))
+    }
+
+    /// Handle a potential connection loss based on an error message
+    ///
+    /// If the error indicates a connection loss, resets browser state and returns `true`.
+    /// Otherwise, returns `false` and leaves state unchanged.
+    ///
+    /// This should be called when a tool execution fails to check if recovery is needed.
+    pub fn handle_potential_connection_loss(&mut self, error_msg: &str) -> bool {
+        if Self::is_connection_loss_error(error_msg) {
+            tracing::warn!(
+                error = %error_msg,
+                "Detected browser connection loss, triggering state reset"
+            );
+            self.reset_on_connection_loss();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Get the active context
     ///
     /// # Errors
