@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -34,11 +34,11 @@ impl Default for BrowserContextListTool {
 
 #[async_trait]
 impl Tool for BrowserContextListTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_context_list"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "List all browser contexts with their details including name, active status, \
          page count, current URL, and proxy configuration."
     }
@@ -98,39 +98,5 @@ impl Tool for BrowserContextListTool {
 
         serde_json::to_string_pretty(&result)
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to serialize result: {e}")))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserContextListTool::new();
-
-        assert_eq!(tool.name(), "browser_context_list");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        // No required fields
-        assert!(schema.get("required").is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_empty() {
-        let input: BrowserContextListInput = serde_json::from_value(json!({})).unwrap();
-        // Just verify it parses without error
-        let _ = input;
-    }
-
-    #[test]
-    fn test_input_parsing_with_extra_fields() {
-        // Should ignore extra fields
-        let result: Result<BrowserContextListInput, _> = serde_json::from_value(json!({
-            "extraField": "ignored"
-        }));
-        assert!(result.is_ok());
     }
 }

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -42,11 +42,11 @@ impl Default for BrowserSelectOptionTool {
 
 #[async_trait]
 impl Tool for BrowserSelectOptionTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_select_option"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Select an option in a dropdown element. For multi-select elements, \
          multiple values can be provided."
     }
@@ -136,50 +136,5 @@ impl Tool for BrowserSelectOptionTool {
             "Selected {:?} in {} [ref={}]",
             input.values, input.element, input.element_ref
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserSelectOptionTool::new();
-
-        assert_eq!(tool.name(), "browser_select_option");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("values")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserSelectOptionInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Country dropdown",
-            "values": ["US"]
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, "e1a2b3c");
-        assert_eq!(input.values, vec!["US"]);
-    }
-
-    #[test]
-    fn test_multi_select() {
-        let input: BrowserSelectOptionInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Colors select",
-            "values": ["red", "blue", "green"]
-        }))
-        .unwrap();
-
-        assert_eq!(input.values.len(), 3);
     }
 }

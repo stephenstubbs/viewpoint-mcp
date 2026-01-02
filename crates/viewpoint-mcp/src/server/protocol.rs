@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use super::error::ServerError;
 use super::types::ServerConfig;
 use crate::browser::BrowserState;
-use crate::tools::{register_all_tools, Capability, ToolRegistry};
+use crate::tools::{Capability, ToolRegistry, register_all_tools};
 
 /// JSON-RPC request
 #[derive(Debug, Deserialize)]
@@ -209,7 +209,7 @@ impl McpServer {
         let capabilities: Vec<Capability> = config
             .capabilities
             .iter()
-            .filter_map(|s| Capability::from_str(s))
+            .filter_map(|s| s.parse().ok())
             .collect();
 
         let mut tools = ToolRegistry::with_capabilities(capabilities);

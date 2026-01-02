@@ -33,11 +33,11 @@ impl Default for BrowserCloseTool {
 
 #[async_trait]
 impl Tool for BrowserCloseTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_close"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Close the current page. If there are multiple pages open, this closes only the \
          active page. The browser context remains open with any remaining pages."
     }
@@ -90,50 +90,15 @@ impl Tool for BrowserCloseTool {
         context.invalidate_cache();
 
         // Build result message
-        let url_info = current_url.map(|u| format!(" ({})", u)).unwrap_or_default();
+        let url_info = current_url.map(|u| format!(" ({u})")).unwrap_or_default();
 
         let remaining = page_count - 1;
         let remaining_info = if remaining > 0 {
-            format!(", {} page(s) remaining", remaining)
+            format!(", {remaining} page(s) remaining")
         } else {
             ", no pages remaining".to_string()
         };
 
         Ok(format!("Closed page{url_info}{remaining_info}"))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserCloseTool::new();
-
-        assert_eq!(tool.name(), "browser_close");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        // No required properties
-        assert!(schema.get("required").is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_empty() {
-        let input: BrowserCloseInput = serde_json::from_value(json!({})).unwrap();
-        // Just verify it parses without error
-        let _ = input;
-    }
-
-    #[test]
-    fn test_input_parsing_with_extra_fields() {
-        // Extra fields should be ignored
-        let input: BrowserCloseInput = serde_json::from_value(json!({
-            "unknownField": "value"
-        }))
-        .unwrap();
-        let _ = input;
     }
 }

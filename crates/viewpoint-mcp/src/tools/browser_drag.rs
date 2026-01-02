@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -44,11 +44,11 @@ impl Default for BrowserDragTool {
 
 #[async_trait]
 impl Tool for BrowserDragTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_drag"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Perform a drag and drop operation from one element to another."
     }
 
@@ -130,38 +130,5 @@ impl Tool for BrowserDragTool {
             "Dragged {} [ref={}] to {} [ref={}]",
             input.start_element, input.start_ref, input.end_element, input.end_ref
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserDragTool::new();
-
-        assert_eq!(tool.name(), "browser_drag");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        let required = schema["required"].as_array().unwrap();
-        assert!(required.contains(&json!("startRef")));
-        assert!(required.contains(&json!("endRef")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserDragInput = serde_json::from_value(json!({
-            "startRef": "e1a2b3c",
-            "startElement": "Draggable item",
-            "endRef": "e4d5e6f",
-            "endElement": "Drop zone"
-        }))
-        .unwrap();
-
-        assert_eq!(input.start_ref, "e1a2b3c");
-        assert_eq!(input.end_ref, "e4d5e6f");
     }
 }

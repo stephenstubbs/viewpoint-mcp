@@ -2,6 +2,9 @@
 //!
 //! This module provides the tool trait and registry for MCP tool definitions.
 
+#[cfg(test)]
+mod tests;
+
 // Navigation tools
 mod browser_navigate;
 mod browser_navigate_back;
@@ -101,7 +104,7 @@ pub use browser_pdf_save::BrowserPdfSaveTool;
 
 // Re-export framework types
 pub use error::ToolError;
-pub use registry::{register_all_tools, ToolRegistry};
+pub use registry::{ToolRegistry, register_all_tools};
 pub use traits::{Capability, Tool, ToolResult};
 
 /// Result type for tool operations

@@ -1,7 +1,7 @@
 //! Browser navigate back tool for navigating back in history
 
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -25,11 +25,11 @@ impl Default for BrowserNavigateBackTool {
 
 #[async_trait]
 impl Tool for BrowserNavigateBackTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_navigate_back"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Navigate back to the previous page in the browser history."
     }
 
@@ -79,21 +79,5 @@ impl Tool for BrowserNavigateBackTool {
         } else {
             Ok("Navigated back".to_string())
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserNavigateBackTool::new();
-
-        assert_eq!(tool.name(), "browser_navigate_back");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
     }
 }

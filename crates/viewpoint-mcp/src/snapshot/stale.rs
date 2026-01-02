@@ -94,7 +94,7 @@ pub struct SimilarElement {
 /// Stored snapshot info for comparison
 #[derive(Debug, Clone)]
 pub struct SnapshotInfo {
-    /// Map from ref string (e.g., "e12345") to element info
+    /// Map from ref string (e.g., "c0p0f0e1") to element info
     pub elements: HashMap<String, StoredElementInfo>,
 }
 
@@ -145,27 +145,28 @@ impl StaleRefDetector {
         if let Some(current_info) = current.elements.get(ref_str) {
             // Element exists - check if it changed from previous
             if let Some(previous) = &self.previous
-                && let Some(previous_info) = previous.elements.get(ref_str) {
-                    // Compare for significant changes
-                    if current_info.role != previous_info.role {
-                        return Err(StaleRefError::ElementChanged {
-                            ref_string: element_ref.to_ref_string(),
-                            was: previous_info.description.clone(),
-                            now: current_info.description.clone(),
-                        });
-                    }
-
-                    // Check for minor name changes
-                    if current_info.name != previous_info.name {
-                        return Err(StaleRefError::MinorChange {
-                            ref_string: element_ref.to_ref_string(),
-                            change_description: format!(
-                                "name changed from {:?} to {:?}",
-                                previous_info.name, current_info.name
-                            ),
-                        });
-                    }
+                && let Some(previous_info) = previous.elements.get(ref_str)
+            {
+                // Compare for significant changes
+                if current_info.role != previous_info.role {
+                    return Err(StaleRefError::ElementChanged {
+                        ref_string: element_ref.to_ref_string(),
+                        was: previous_info.description.clone(),
+                        now: current_info.description.clone(),
+                    });
                 }
+
+                // Check for minor name changes
+                if current_info.name != previous_info.name {
+                    return Err(StaleRefError::MinorChange {
+                        ref_string: element_ref.to_ref_string(),
+                        change_description: format!(
+                            "name changed from {:?} to {:?}",
+                            previous_info.name, current_info.name
+                        ),
+                    });
+                }
+            }
 
             Ok(())
         } else {
@@ -176,7 +177,11 @@ impl StaleRefDetector {
             let original_description = self
                 .previous
                 .as_ref()
-                .and_then(|p| p.elements.get(ref_str)).map_or_else(|| format!("element {}", element_ref.to_ref_string()), |info| info.description.clone());
+                .and_then(|p| p.elements.get(ref_str))
+                .map_or_else(
+                    || format!("element {}", element_ref.to_ref_string()),
+                    |info| info.description.clone(),
+                );
 
             Err(StaleRefError::ElementRemoved {
                 ref_string: element_ref.to_ref_string(),
@@ -202,15 +207,11 @@ impl StaleRefDetector {
     /// Recursively collect elements with refs
     fn collect_elements(map: &mut HashMap<String, StoredElementInfo>, element: &SnapshotElement) {
         if let Some(element_ref) = &element.element_ref {
-            let description = format!(
-                "{} {}",
-                element.role,
-                element.name.as_deref().unwrap_or("")
-            )
-            .trim()
-            .to_string();
+            let description = format!("{} {}", element.role, element.name.as_deref().unwrap_or(""))
+                .trim()
+                .to_string();
 
-            // Store using the raw ref string (e.g., "e12345")
+            // Store using the raw ref string (e.g., "c0p0f0e1")
             map.insert(
                 element_ref.ref_string().to_string(),
                 StoredElementInfo {

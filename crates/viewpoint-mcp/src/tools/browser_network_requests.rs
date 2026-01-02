@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -35,11 +35,11 @@ impl Default for BrowserNetworkRequestsTool {
 
 #[async_trait]
 impl Tool for BrowserNetworkRequestsTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_network_requests"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Returns all network requests made since loading the page. By default, excludes \
          successful static resources (images, fonts, scripts). Set includeStatic: true \
          to see all requests."
@@ -82,7 +82,7 @@ impl Tool for BrowserNetworkRequestsTool {
         // This gives us the resource timing entries
         let include_static = input.include_static;
         let js_code = format!(
-            r#"(() => {{
+            r"(() => {{
             const entries = performance.getEntriesByType('resource');
             const staticTypes = ['img', 'font', 'stylesheet', 'script'];
             
@@ -112,7 +112,7 @@ impl Tool for BrowserNetworkRequestsTool {
                 const isSuccess = r.status === null || (r.status >= 200 && r.status < 400);
                 return !(isStatic && isSuccess);
             }});
-        }})()"#
+        }})()"
         );
 
         let result: serde_json::Value = page.evaluate(&js_code).await.map_err(|e| {
@@ -136,38 +136,5 @@ impl Tool for BrowserNetworkRequestsTool {
             },
             serde_json::to_string_pretty(&result).unwrap_or_else(|_| "[]".to_string())
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserNetworkRequestsTool::new();
-
-        assert_eq!(tool.name(), "browser_network_requests");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-    }
-
-    #[test]
-    fn test_input_defaults() {
-        let input: BrowserNetworkRequestsInput = serde_json::from_value(json!({})).unwrap();
-
-        assert!(!input.include_static);
-    }
-
-    #[test]
-    fn test_input_include_static() {
-        let input: BrowserNetworkRequestsInput = serde_json::from_value(json!({
-            "includeStatic": true
-        }))
-        .unwrap();
-
-        assert!(input.include_static);
     }
 }

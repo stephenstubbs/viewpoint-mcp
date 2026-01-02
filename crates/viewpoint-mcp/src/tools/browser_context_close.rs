@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -34,11 +34,11 @@ impl Default for BrowserContextCloseTool {
 
 #[async_trait]
 impl Tool for BrowserContextCloseTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_context_close"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Close a browser context by name. Cannot close the only remaining context. \
          If the closed context was active, switches to the default context."
     }
@@ -57,6 +57,8 @@ impl Tool for BrowserContextCloseTool {
     }
 
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
+        use std::fmt::Write;
+
         // Parse input
         let input: BrowserContextCloseInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
@@ -94,52 +96,13 @@ impl Tool for BrowserContextCloseTool {
         let mut result = format!("Closed browser context '{}'", input.name);
 
         if was_active {
-            result.push_str(&format!(
+            let _ = write!(
+                result,
                 ". Switched to context '{}'",
                 browser.active_context_name()
-            ));
+            );
         }
 
         Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserContextCloseTool::new();
-
-        assert_eq!(tool.name(), "browser_context_close");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("name")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserContextCloseInput = serde_json::from_value(json!({
-            "name": "context-to-close"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "context-to-close");
-    }
-
-    #[test]
-    fn test_input_parsing_default_context() {
-        let input: BrowserContextCloseInput = serde_json::from_value(json!({
-            "name": "default"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "default");
     }
 }

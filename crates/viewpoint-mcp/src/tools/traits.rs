@@ -19,20 +19,24 @@ pub enum Capability {
 }
 
 impl Capability {
-    /// Parse a capability from a string
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "vision" => Some(Capability::Vision),
-            "pdf" => Some(Capability::Pdf),
-            _ => None,
+    /// Get the capability name as a string
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Vision => "vision",
+            Self::Pdf => "pdf",
         }
     }
+}
 
-    /// Get the capability name as a string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Capability::Vision => "vision",
-            Capability::Pdf => "pdf",
+impl std::str::FromStr for Capability {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "vision" => Ok(Self::Vision),
+            "pdf" => Ok(Self::Pdf),
+            other => Err(format!("Unknown capability: {other}")),
         }
     }
 }
@@ -41,10 +45,10 @@ impl Capability {
 #[async_trait]
 pub trait Tool: Send + Sync {
     /// Get the tool name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get the tool description
-    fn description(&self) -> &str;
+    fn description(&self) -> &'static str;
 
     /// Get the JSON schema for tool input
     fn input_schema(&self) -> Value;

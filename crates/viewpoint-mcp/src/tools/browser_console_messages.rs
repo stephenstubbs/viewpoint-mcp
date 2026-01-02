@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -13,21 +13,17 @@ pub struct BrowserConsoleMessagesTool;
 /// Console log level for filtering
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum ConsoleLevel {
     /// Errors only
     Error,
     /// Errors and warnings
     Warning,
     /// Errors, warnings, and info (default)
+    #[default]
     Info,
     /// All messages including debug
     Debug,
-}
-
-impl Default for ConsoleLevel {
-    fn default() -> Self {
-        Self::Info
-    }
 }
 
 /// Input parameters for `browser_console_messages`
@@ -55,11 +51,11 @@ impl Default for BrowserConsoleMessagesTool {
 
 #[async_trait]
 impl Tool for BrowserConsoleMessagesTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_console_messages"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Returns all console messages logged since the page was loaded. Messages are filtered \
          by level: 'error' (errors only), 'warning' (errors + warnings), 'info' (default, \
          includes log), 'debug' (all messages)."
@@ -111,10 +107,9 @@ impl Tool for BrowserConsoleMessagesTool {
             return { note: "No console messages captured. Console monitoring may not be enabled." };
         })()"#;
 
-        let result: serde_json::Value = page
-            .evaluate(js_code)
-            .await
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get console messages: {e}")))?;
+        let result: serde_json::Value = page.evaluate(js_code).await.map_err(|e| {
+            ToolError::ExecutionFailed(format!("Failed to get console messages: {e}"))
+        })?;
 
         // Check if we got a note about no messages
         if let Some(note) = result.get("note").and_then(|n| n.as_str()) {
@@ -137,48 +132,5 @@ impl Tool for BrowserConsoleMessagesTool {
             level_str,
             serde_json::to_string_pretty(&result).unwrap_or_else(|_| "No messages".to_string())
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserConsoleMessagesTool::new();
-
-        assert_eq!(tool.name(), "browser_console_messages");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-    }
-
-    #[test]
-    fn test_input_defaults() {
-        let input: BrowserConsoleMessagesInput = serde_json::from_value(json!({})).unwrap();
-
-        assert_eq!(input.level, ConsoleLevel::Info);
-    }
-
-    #[test]
-    fn test_input_error_level() {
-        let input: BrowserConsoleMessagesInput = serde_json::from_value(json!({
-            "level": "error"
-        }))
-        .unwrap();
-
-        assert_eq!(input.level, ConsoleLevel::Error);
-    }
-
-    #[test]
-    fn test_input_debug_level() {
-        let input: BrowserConsoleMessagesInput = serde_json::from_value(json!({
-            "level": "debug"
-        }))
-        .unwrap();
-
-        assert_eq!(input.level, ConsoleLevel::Debug);
     }
 }

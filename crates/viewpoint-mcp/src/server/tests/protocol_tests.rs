@@ -76,23 +76,42 @@ async fn test_tools_list_returns_core_tools() {
     // (30 total - 3 vision tools - 0 pdf tools that are hidden)
     // Actually: 30 total tools, 3 require Vision, 1 requires Pdf
     // So without capabilities: 30 - 3 - 1 = 26 core tools
-    assert_eq!(tools.len(), 26, "Expected 26 core tools without optional capabilities");
+    assert_eq!(
+        tools.len(),
+        26,
+        "Expected 26 core tools without optional capabilities"
+    );
 
     // Verify some expected tool names are present
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
+    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
 
-    assert!(tool_names.contains(&"browser_navigate"), "Should contain browser_navigate");
-    assert!(tool_names.contains(&"browser_click"), "Should contain browser_click");
-    assert!(tool_names.contains(&"browser_snapshot"), "Should contain browser_snapshot");
-    assert!(tool_names.contains(&"browser_tabs"), "Should contain browser_tabs");
+    assert!(
+        tool_names.contains(&"browser_navigate"),
+        "Should contain browser_navigate"
+    );
+    assert!(
+        tool_names.contains(&"browser_click"),
+        "Should contain browser_click"
+    );
+    assert!(
+        tool_names.contains(&"browser_snapshot"),
+        "Should contain browser_snapshot"
+    );
+    assert!(
+        tool_names.contains(&"browser_tabs"),
+        "Should contain browser_tabs"
+    );
 
     // Vision tools should NOT be present without vision capability
-    assert!(!tool_names.contains(&"browser_mouse_click_xy"), "Should NOT contain vision tool");
+    assert!(
+        !tool_names.contains(&"browser_mouse_click_xy"),
+        "Should NOT contain vision tool"
+    );
     // PDF tool should NOT be present without pdf capability
-    assert!(!tool_names.contains(&"browser_pdf_save"), "Should NOT contain pdf tool");
+    assert!(
+        !tool_names.contains(&"browser_pdf_save"),
+        "Should NOT contain pdf tool"
+    );
 }
 
 #[tokio::test]
@@ -186,10 +205,7 @@ async fn test_tools_registered_with_vision_capability() {
     // With vision enabled: 26 core + 3 vision = 29 tools
     assert_eq!(tools.len(), 29, "Expected 29 tools with vision capability");
 
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
+    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
 
     // Vision tools should now be present
     assert!(tool_names.contains(&"browser_mouse_click_xy"));
@@ -218,10 +234,7 @@ async fn test_tools_registered_with_all_capabilities() {
     // With all capabilities: all 30 tools
     assert_eq!(tools.len(), 30, "Expected 30 tools with all capabilities");
 
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
+    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
 
     // All optional tools should be present
     assert!(tool_names.contains(&"browser_mouse_click_xy"));

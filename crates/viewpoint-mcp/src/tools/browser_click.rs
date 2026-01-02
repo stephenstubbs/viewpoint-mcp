@@ -2,7 +2,8 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use viewpoint_core::MouseButton;
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -22,18 +23,16 @@ pub struct BrowserClickInput {
     /// Human-readable element description for verification
     pub element: Option<String>,
 
-    /// Mouse button to use (TODO: implement in execute)
+    /// Mouse button to use
     #[serde(default)]
-    #[allow(dead_code)]
     pub button: ClickButton,
 
     /// Whether to perform a double-click
     #[serde(default)]
     pub double_click: bool,
 
-    /// Modifier keys to hold during click (TODO: implement in execute)
+    /// Modifier keys to hold during click
     #[serde(default)]
-    #[allow(dead_code)]
     pub modifiers: Vec<ModifierKey>,
 }
 
@@ -58,6 +57,41 @@ pub enum ModifierKey {
     Shift,
 }
 
+impl ClickButton {
+    /// Convert to viewpoint-core `MouseButton`
+    fn to_mouse_button(self) -> MouseButton {
+        match self {
+            Self::Left => MouseButton::Left,
+            Self::Right => MouseButton::Right,
+            Self::Middle => MouseButton::Middle,
+        }
+    }
+}
+
+impl ModifierKey {
+    /// Convert to CDP modifier bitmask value
+    fn to_cdp_modifier(self) -> i32 {
+        use viewpoint_cdp::protocol::input::modifiers;
+        match self {
+            Self::Alt => modifiers::ALT,
+            Self::Control => modifiers::CTRL,
+            Self::ControlOrMeta => {
+                // On macOS, ControlOrMeta means Meta; on other platforms, it means Ctrl
+                // Since we can't detect platform at runtime reliably, use Ctrl as the default
+                // (this matches Playwright's behavior on Linux/Windows)
+                modifiers::CTRL
+            }
+            Self::Meta => modifiers::META,
+            Self::Shift => modifiers::SHIFT,
+        }
+    }
+}
+
+/// Convert a list of modifier keys to a combined CDP modifiers bitmask
+fn modifiers_to_bitmask(modifiers: &[ModifierKey]) -> i32 {
+    modifiers.iter().fold(0, |acc, m| acc | m.to_cdp_modifier())
+}
+
 impl BrowserClickTool {
     /// Create a new browser click tool
     #[must_use]
@@ -75,12 +109,12 @@ impl Default for BrowserClickTool {
 #[async_trait]
 impl Tool for BrowserClickTool {
     #[allow(clippy::unnecessary_literal_bound)]
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_click"
     }
 
     #[allow(clippy::unnecessary_literal_bound)]
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Click an element on the page using its ref from browser_snapshot. \
          Supports left/right/middle click, double-click, and modifier keys."
     }
@@ -132,9 +166,9 @@ impl Tool for BrowserClickTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active page (need mutable context for cache invalidation)
         let context = browser
-            .active_context()
+            .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
         let page = context
@@ -152,20 +186,43 @@ impl Tool for BrowserClickTool {
             ToolError::ElementNotFound(format!("Element ref '{}': {}", input.element_ref, e))
         })?;
 
-        // Use native ref resolution API from viewpoint 0.2.9
+        // Use native ref resolution API from viewpoint
         let locator = page.locator_from_ref(&input.element_ref);
+
+        // Build the click operation with button and modifier support
+        let modifiers_bitmask = modifiers_to_bitmask(&input.modifiers);
 
         // Perform the click based on options
         let click_result = if input.double_click {
-            locator.dblclick().await
+            // Double-click with modifiers (button is always left for double-click)
+            // Note: DblclickBuilder doesn't support non-left buttons by design
+            let mut builder = locator.dblclick();
+            if modifiers_bitmask != 0 {
+                builder = builder.modifiers(modifiers_bitmask);
+            }
+            builder.await
         } else {
-            locator.click().await
+            // Single click with button and modifiers
+            let mut builder = locator.click();
+            if !matches!(input.button, ClickButton::Left) {
+                builder = builder.button(input.button.to_mouse_button());
+            }
+            if modifiers_bitmask != 0 {
+                builder = builder.modifiers(modifiers_bitmask);
+            }
+            builder.await
         };
 
         match click_result {
             Ok(()) => {
+                // Invalidate cache after successful click (DOM may have changed)
+                context.invalidate_cache();
+
                 let element_desc = input.element.as_deref().unwrap_or("element");
-                Ok(format!("Clicked {} [ref={}]", element_desc, input.element_ref))
+                Ok(format!(
+                    "Clicked {} [ref={}]",
+                    element_desc, input.element_ref
+                ))
             }
             Err(e) => Err(ToolError::ExecutionFailed(format!(
                 "Failed to click element '{}' [ref={}]: {}. The element may have changed since the snapshot.",
@@ -174,53 +231,5 @@ impl Tool for BrowserClickTool {
                 e
             ))),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserClickTool::new();
-
-        assert_eq!(tool.name(), "browser_click");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"].as_array().unwrap().contains(&json!("ref")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserClickInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Submit button"
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, "e1a2b3c");
-        assert_eq!(input.element, Some("Submit button".to_string()));
-        assert!(matches!(input.button, ClickButton::Left));
-        assert!(!input.double_click);
-    }
-
-    #[test]
-    fn test_input_with_options() {
-        let input: BrowserClickInput = serde_json::from_value(json!({
-            "ref": "clean:e1a2b3c",
-            "element": "Menu item",
-            "button": "right",
-            "doubleClick": true,
-            "modifiers": ["Control", "Shift"]
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, "clean:e1a2b3c");
-        assert!(matches!(input.button, ClickButton::Right));
-        assert!(input.double_click);
-        assert_eq!(input.modifiers.len(), 2);
     }
 }

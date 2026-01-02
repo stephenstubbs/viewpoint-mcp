@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -34,11 +34,11 @@ impl Default for BrowserContextSwitchTool {
 
 #[async_trait]
 impl Tool for BrowserContextSwitchTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_context_switch"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Switch to an existing browser context by name. \
          The context must have been previously created with browser_context_create."
     }
@@ -86,45 +86,5 @@ impl Tool for BrowserContextSwitchTool {
             "Switched from context '{}' to '{}'",
             previous_context, input.name
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserContextSwitchTool::new();
-
-        assert_eq!(tool.name(), "browser_context_switch");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("name")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserContextSwitchInput = serde_json::from_value(json!({
-            "name": "my-context"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "my-context");
-    }
-
-    #[test]
-    fn test_input_parsing_default_context() {
-        let input: BrowserContextSwitchInput = serde_json::from_value(json!({
-            "name": "default"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "default");
     }
 }

@@ -1,7 +1,7 @@
 # mcp-server Specification
 
 ## Purpose
-TBD - created by archiving change add-mcp-server-foundation. Update Purpose after archive.
+This specification defines the Model Context Protocol (MCP) server implementation that exposes browser automation capabilities to AI agents. The server handles protocol communication over stdio and SSE transports, manages tool registration and execution, and coordinates browser lifecycle across client sessions.
 ## Requirements
 ### Requirement: MCP Protocol Support
 The server SHALL implement the Model Context Protocol (MCP) for tool-based LLM interaction.

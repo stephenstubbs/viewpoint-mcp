@@ -48,7 +48,7 @@ pub struct CachedSnapshot {
     /// Page index when captured
     pub page_index: usize,
 
-    /// Whether all_refs mode was used when capturing
+    /// Whether `all_refs` mode was used when capturing
     pub all_refs: bool,
 }
 
@@ -171,7 +171,7 @@ impl ContextState {
     /// - The cache has expired (>5 seconds old)
     /// - The URL has changed
     /// - The active page has changed
-    /// - The `all_refs` mode doesn't match (requesting all_refs when cached without, or vice versa)
+    /// - The `all_refs` mode doesn't match (requesting `all_refs` when cached without, or vice versa)
     #[must_use]
     pub fn get_cached_snapshot(&self, all_refs: bool) -> Option<&AccessibilitySnapshot> {
         let cache = self.cached_snapshot.as_ref()?;
@@ -187,9 +187,10 @@ impl ContextState {
         }
 
         if let Some(current_url) = &self.current_url
-            && cache.url != *current_url {
-                return None;
-            }
+            && cache.url != *current_url
+        {
+            return None;
+        }
 
         // Check if all_refs mode matches
         // A cached all_refs snapshot can satisfy a non-all_refs request (superset)

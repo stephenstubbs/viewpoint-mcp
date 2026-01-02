@@ -111,7 +111,9 @@ impl SnapshotElement {
     /// Get the ref string if available
     #[must_use]
     pub fn ref_string(&self) -> Option<String> {
-        self.element_ref.as_ref().map(super::reference::ElementRef::to_ref_string)
+        self.element_ref
+            .as_ref()
+            .map(super::reference::ElementRef::to_ref_string)
     }
 
     /// Count all elements with refs in this subtree
@@ -125,7 +127,11 @@ impl SnapshotElement {
     /// Count all elements in this subtree
     #[must_use]
     pub fn count_elements(&self) -> usize {
-        1 + self.children.iter().map(Self::count_elements).sum::<usize>()
+        1 + self
+            .children
+            .iter()
+            .map(Self::count_elements)
+            .sum::<usize>()
     }
 
     /// Count both refs and elements in a single pass

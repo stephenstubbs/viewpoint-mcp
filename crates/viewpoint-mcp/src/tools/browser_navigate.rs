@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -34,11 +34,11 @@ impl Default for BrowserNavigateTool {
 
 #[async_trait]
 impl Tool for BrowserNavigateTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_navigate"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Navigate to a URL in the browser. The page will wait for the load event before returning."
     }
 
@@ -96,32 +96,5 @@ impl Tool for BrowserNavigateTool {
         context.invalidate_cache();
 
         Ok(format!("Navigated to {}", input.url))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserNavigateTool::new();
-
-        assert_eq!(tool.name(), "browser_navigate");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"].as_array().unwrap().contains(&json!("url")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserNavigateInput = serde_json::from_value(json!({
-            "url": "https://example.com"
-        }))
-        .unwrap();
-
-        assert_eq!(input.url, "https://example.com");
     }
 }

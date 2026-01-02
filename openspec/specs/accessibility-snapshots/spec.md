@@ -1,7 +1,7 @@
 # accessibility-snapshots Specification
 
 ## Purpose
-TBD - created by archiving change add-accessibility-snapshots. Update Purpose after archive.
+This specification defines how viewpoint-mcp captures and formats accessibility tree snapshots for LLM consumption. The accessibility snapshot system enables AI agents to understand page structure, identify interactive elements, and perform reliable element-based interactions through a consistent reference system.
 ## Requirements
 ### Requirement: Accessibility Tree Capture
 The system SHALL capture the accessibility tree from the current page for LLM consumption.
@@ -45,31 +45,23 @@ The system SHALL classify elements into tiers to determine which receive refs.
 - **AND** the user can request full refs with `browser_snapshot` parameter `allRefs: true`
 
 ### Requirement: Element Reference System
-The system SHALL assign stable, unique references to interactive elements using a hybrid identification strategy.
+The system SHALL assign unique references to interactive elements using viewpoint-core's native CDP backend node identifiers.
+
+**Implementation Note**: The spec originally described a hybrid identification strategy (id/data-testid/name prioritization) for stable refs. The current implementation uses viewpoint-core's native `node_ref` field which provides refs in the format `e{backendNodeId}`. This is a simpler approach but refs may change on page refresh. Enhanced stable identification would require viewpoint-core changes.
 
 #### Scenario: Reference format
 - **WHEN** refs are generated
-- **THEN** the format is `e{hash}` where hash is a stable 4-6 character identifier
-- **AND** in multi-context mode, refs are prefixed with context name (e.g., `clean:e1a2b`)
+- **THEN** the format is `e{backendNodeId}` where backendNodeId is the CDP backend node identifier
+- **AND** in multi-context mode, refs are prefixed with context name (e.g., `clean:e12345`)
 
-#### Scenario: Stable identifier from explicit IDs
-- **WHEN** an element has a unique `id` attribute
-- **THEN** the hash is derived primarily from the id
-- **AND** the ref remains stable across page refreshes
-
-#### Scenario: Stable identifier from test attributes
-- **WHEN** an element has `data-testid`, `data-test`, or `name` attribute
-- **THEN** the hash incorporates that attribute
-- **AND** these attributes take precedence over positional identification
-
-#### Scenario: Fallback to structural identification
-- **WHEN** an element has no unique identifier attributes
-- **THEN** the hash is derived from: role + accessible name + DOM path
-- **AND** the ref may change if page structure changes significantly
+#### Scenario: Native ref from viewpoint-core
+- **WHEN** viewpoint-core's `AriaSnapshot.node_ref` is present
+- **THEN** the ref is used directly for element identification
+- **AND** the ref can be passed to `page.locator_from_ref()` for reliable element resolution
 
 #### Scenario: Reference validation on use
-- **WHEN** a tool is called with ref `e{hash}`
-- **THEN** the system looks up the element by hash in the current snapshot
+- **WHEN** a tool is called with ref `e{backendNodeId}`
+- **THEN** the system looks up the element by ref in the current snapshot
 - **AND** validates the element still exists
 - **AND** verifies the role matches expectations
 
@@ -82,7 +74,7 @@ The system SHALL detect stale references and provide actionable recovery guidanc
 
 #### Scenario: Reference exists but element changed
 - **WHEN** a tool is called with a ref from a previous snapshot
-- **AND** an element with matching hash exists but role or name changed significantly
+- **AND** an element with matching ref exists but role or name changed significantly
 - **THEN** the system returns an error with details:
   - "Element changed since snapshot. Was: button 'Submit', Now: button 'Loading...'"
   - "Take a new snapshot to get current element state."
@@ -90,13 +82,12 @@ The system SHALL detect stale references and provide actionable recovery guidanc
 #### Scenario: Reference no longer exists
 - **WHEN** a tool is called with a ref that no longer matches any element
 - **THEN** the system returns an error with recovery suggestions:
-  - "Element 'Submit button' (ref: e1a2b) no longer exists."
-  - "Similar elements on page: [lists up to 3 close matches with their refs]"
+  - "Element 'Submit button' (ref: e12345) no longer exists."
   - "Take a new snapshot to see current page state."
 
 #### Scenario: Graceful handling of minor changes
 - **WHEN** a tool is called with a ref from a previous snapshot
-- **AND** the element exists with only minor changes (e.g., text count updated)
+- **AND** the element exists with only minor changes (e.g., text content updated)
 - **THEN** the action proceeds with a note:
   - "Note: Element may have changed. Using current state."
 
@@ -119,13 +110,13 @@ The system SHALL format accessibility snapshots as indented text for LLM readabi
   ```
   - document:
     - heading "Welcome"
-    - button "Sign In" [ref=s1e1]
-    - textbox "Email" [ref=s1e2]
+    - button "Sign In" [ref=e12345]
+    - textbox "Email" [ref=e12346]
   ```
 
 #### Scenario: Truncate long text content
 - **WHEN** an element has text content exceeding 100 characters
-- **THEN** the text is truncated with ellipsis
+- **THEN** the text is truncated with ellipsis ("...")
 - **AND** the full text is available via element inspection
 
 ### Requirement: Element Lookup by Reference

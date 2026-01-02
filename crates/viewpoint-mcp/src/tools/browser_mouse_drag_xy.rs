@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::traits::Capability;
 use super::{Tool, ToolError, ToolResult};
@@ -52,11 +52,11 @@ impl Default for BrowserMouseDragXyTool {
 
 #[async_trait]
 impl Tool for BrowserMouseDragXyTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_mouse_drag_xy"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Drag from one viewport coordinate to another. For vision-enabled LLMs. \
          Performs mouse down at start, moves to end, then releases."
     }
@@ -114,9 +114,9 @@ impl Tool for BrowserMouseDragXyTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active page (need mutable context for cache invalidation)
         let context = browser
-            .active_context()
+            .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
         let page = context
@@ -159,66 +159,12 @@ impl Tool for BrowserMouseDragXyTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed mouse up: {e}")))?;
 
+        // Invalidate cache after drag (DOM may have changed)
+        context.invalidate_cache();
+
         Ok(format!(
             "Dragged from ({}, {}) to ({}, {}) in {} steps",
             input.start_x, input.start_y, input.end_x, input.end_y, input.steps
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserMouseDragXyTool::new();
-
-        assert_eq!(tool.name(), "browser_mouse_drag_xy");
-        assert!(tool.description().contains("Drag"));
-        assert!(tool.description().contains("vision"));
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        let required = schema["required"].as_array().unwrap();
-        assert!(required.contains(&json!("startX")));
-        assert!(required.contains(&json!("startY")));
-        assert!(required.contains(&json!("endX")));
-        assert!(required.contains(&json!("endY")));
-    }
-
-    #[test]
-    fn test_input_parsing_minimal() {
-        let input: BrowserMouseDragXyInput = serde_json::from_value(json!({
-            "startX": 100.0,
-            "startY": 200.0,
-            "endX": 300.0,
-            "endY": 400.0
-        }))
-        .unwrap();
-
-        assert!((input.start_x - 100.0).abs() < f64::EPSILON);
-        assert!((input.start_y - 200.0).abs() < f64::EPSILON);
-        assert!((input.end_x - 300.0).abs() < f64::EPSILON);
-        assert!((input.end_y - 400.0).abs() < f64::EPSILON);
-        assert_eq!(input.steps, 10); // default
-    }
-
-    #[test]
-    fn test_input_parsing_with_steps() {
-        let input: BrowserMouseDragXyInput = serde_json::from_value(json!({
-            "startX": 10.0,
-            "startY": 20.0,
-            "endX": 100.0,
-            "endY": 200.0,
-            "steps": 25
-        }))
-        .unwrap();
-
-        assert!((input.start_x - 10.0).abs() < f64::EPSILON);
-        assert!((input.start_y - 20.0).abs() < f64::EPSILON);
-        assert!((input.end_x - 100.0).abs() < f64::EPSILON);
-        assert!((input.end_y - 200.0).abs() < f64::EPSILON);
-        assert_eq!(input.steps, 25);
     }
 }

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -50,11 +50,11 @@ impl Default for BrowserTypeTool {
 
 #[async_trait]
 impl Tool for BrowserTypeTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_type"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Type text into an editable element on the page. Use 'slowly: true' for character-by-character \
          typing that triggers key handlers. Use 'submit: true' to press Enter after typing."
     }
@@ -140,13 +140,12 @@ impl Tool for BrowserTypeTool {
 
         // Submit if requested - use page keyboard API for more reliable behavior
         // The locator.press() can have issues after fill() due to focus changes
-        if input.submit {
-            if let Err(e) = page.keyboard().press("Enter").await {
-                return Err(ToolError::ExecutionFailed(format!(
-                    "Failed to press Enter: {}",
-                    e
-                )));
-            }
+        if input.submit
+            && let Err(e) = page.keyboard().press("Enter").await
+        {
+            return Err(ToolError::ExecutionFailed(format!(
+                "Failed to press Enter: {e}"
+            )));
         }
 
         // Invalidate cache after interaction
@@ -161,60 +160,5 @@ impl Tool for BrowserTypeTool {
         }
 
         Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserTypeTool::new();
-
-        assert_eq!(tool.name(), "browser_type");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("ref")));
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("text")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserTypeInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Email input",
-            "text": "user@example.com"
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, "e1a2b3c");
-        assert_eq!(input.element, "Email input");
-        assert_eq!(input.text, "user@example.com");
-        assert!(!input.slowly);
-        assert!(!input.submit);
-    }
-
-    #[test]
-    fn test_input_with_options() {
-        let input: BrowserTypeInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Search box",
-            "text": "hello world",
-            "slowly": true,
-            "submit": true
-        }))
-        .unwrap();
-
-        assert!(input.slowly);
-        assert!(input.submit);
     }
 }

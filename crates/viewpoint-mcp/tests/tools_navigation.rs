@@ -17,7 +17,10 @@ async fn create_browser() -> BrowserState {
         ..Default::default()
     };
     let mut state = BrowserState::new(config);
-    state.initialize().await.expect("Failed to initialize browser");
+    state
+        .initialize()
+        .await
+        .expect("Failed to initialize browser");
     state
 }
 
@@ -130,19 +133,28 @@ async fn test_navigate_multiple_pages() {
 
     // Navigate to first page
     let _ = tool
-        .execute(&json!({ "url": "data:text/html,<h1>Page 1</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Page 1</h1>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
     // Navigate to second page
     let _ = tool
-        .execute(&json!({ "url": "data:text/html,<h1>Page 2</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Page 2</h1>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
     // Navigate to third page
     let result = tool
-        .execute(&json!({ "url": "data:text/html,<h1>Page 3</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Page 3</h1>" }),
+            &mut browser,
+        )
         .await;
 
     assert!(result.is_ok());
@@ -162,13 +174,19 @@ async fn test_navigate_back_after_navigation() {
 
     // Navigate to first page
     nav_tool
-        .execute(&json!({ "url": "data:text/html,<h1>Page 1</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Page 1</h1>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
     // Navigate to second page
     nav_tool
-        .execute(&json!({ "url": "data:text/html,<h1>Page 2</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Page 2</h1>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
@@ -230,12 +248,18 @@ async fn test_navigate_back_invalidates_cache() {
 
     // Navigate to pages
     nav_tool
-        .execute(&json!({ "url": "data:text/html,<button>Page 1</button>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<button>Page 1</button>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
     nav_tool
-        .execute(&json!({ "url": "data:text/html,<button>Page 2</button>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<button>Page 2</button>" }),
+            &mut browser,
+        )
         .await
         .unwrap();
 
@@ -245,12 +269,12 @@ async fn test_navigate_back_invalidates_cache() {
     // Taking a snapshot should work (cache was invalidated)
     let ctx = browser.active_context().unwrap();
     let page = ctx.active_page().unwrap();
-    
+
     use viewpoint_mcp::snapshot::{AccessibilitySnapshot, SnapshotOptions};
     let snapshot = AccessibilitySnapshot::capture(page, SnapshotOptions::default())
         .await
         .unwrap();
-    
+
     // Should have elements from Page 1
     let formatted = snapshot.format();
     assert!(formatted.contains("button"));
@@ -322,12 +346,15 @@ async fn test_navigate_without_browser_init() {
     // Don't initialize browser
 
     let tool = BrowserNavigateTool::new();
-    
+
     // Should auto-initialize when tool is executed
     let result = tool
-        .execute(&json!({ "url": "data:text/html,<h1>Test</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Test</h1>" }),
+            &mut browser,
+        )
         .await;
-    
+
     // Should succeed because tool auto-initializes browser
     assert!(result.is_ok());
 
@@ -342,7 +369,10 @@ async fn test_navigate_after_all_pages_closed() {
 
     // Navigate to a page first
     let result = navigate_tool
-        .execute(&json!({ "url": "data:text/html,<h1>First Page</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>First Page</h1>" }),
+            &mut browser,
+        )
         .await;
     assert!(result.is_ok());
 
@@ -353,9 +383,16 @@ async fn test_navigate_after_all_pages_closed() {
 
     // Now navigate again - should auto-create a new page
     let result = navigate_tool
-        .execute(&json!({ "url": "data:text/html,<h1>Second Page</h1>" }), &mut browser)
+        .execute(
+            &json!({ "url": "data:text/html,<h1>Second Page</h1>" }),
+            &mut browser,
+        )
         .await;
-    assert!(result.is_ok(), "Navigate after close should succeed, got: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Navigate after close should succeed, got: {:?}",
+        result
+    );
     assert!(result.unwrap().contains("Navigated to"));
 
     // Verify the context now has a page

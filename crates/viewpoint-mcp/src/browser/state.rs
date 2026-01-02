@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use viewpoint_core::Browser;
+pub use viewpoint_core::ProxyConfig;
 
 use super::config::BrowserConfig;
 use super::context::ContextState;
@@ -124,8 +125,8 @@ impl BrowserState {
 
         self.browser = Some(browser);
 
-        // Create default context
-        self.create_context_internal(DEFAULT_CONTEXT).await?;
+        // Create default context (without proxy)
+        self.create_context_internal(DEFAULT_CONTEXT, None).await?;
 
         self.initialized = true;
         Ok(())
@@ -193,9 +194,7 @@ impl BrowserState {
             "CDP connection",
         ];
 
-        patterns
-            .iter()
-            .any(|pattern| error_msg.contains(pattern))
+        patterns.iter().any(|pattern| error_msg.contains(pattern))
     }
 
     /// Handle a potential connection loss based on an error message
@@ -240,23 +239,42 @@ impl BrowserState {
             .ok_or(BrowserError::ContextNotFound(name))
     }
 
-    /// Internal helper to create a context
-    async fn create_context_internal(&mut self, name: &str) -> super::Result<()> {
-        let browser = self
-            .browser
-            .as_ref()
-            .ok_or(BrowserError::NotRunning)?;
+    /// Get a context by name
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the context doesn't exist.
+    pub fn get_context(&self, name: &str) -> super::Result<&ContextState> {
+        self.contexts
+            .get(name)
+            .ok_or_else(|| BrowserError::ContextNotFound(name.to_string()))
+    }
 
-        let vp_context = browser
-            .new_context()
-            .await
-            .map_err(|e| BrowserError::LaunchFailed(e.to_string()))?;
+    /// Internal helper to create a context with optional proxy configuration
+    async fn create_context_internal(
+        &mut self,
+        name: &str,
+        proxy: Option<ProxyConfig>,
+    ) -> super::Result<()> {
+        let browser = self.browser.as_ref().ok_or(BrowserError::NotRunning)?;
 
-        let context_state = ContextState::new(name, vp_context)
-            .await
-            .map_err(|e: viewpoint_core::error::ContextError| {
-                BrowserError::LaunchFailed(e.to_string())
-            })?;
+        let vp_context = if let Some(proxy_config) = proxy {
+            browser
+                .new_context_builder()
+                .proxy(proxy_config)
+                .build()
+                .await
+                .map_err(|e| BrowserError::LaunchFailed(e.to_string()))?
+        } else {
+            browser
+                .new_context()
+                .await
+                .map_err(|e| BrowserError::LaunchFailed(e.to_string()))?
+        };
+
+        let context_state = ContextState::new(name, vp_context).await.map_err(
+            |e: viewpoint_core::error::ContextError| BrowserError::LaunchFailed(e.to_string()),
+        )?;
 
         self.contexts.insert(name.to_string(), context_state);
         self.active_context = name.to_string();
@@ -270,6 +288,19 @@ impl BrowserState {
     ///
     /// Returns an error if a context with the same name already exists.
     pub async fn create_context(&mut self, name: impl Into<String>) -> super::Result<()> {
+        self.create_context_with_options(name, None).await
+    }
+
+    /// Create a new named context with optional proxy configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a context with the same name already exists.
+    pub async fn create_context_with_options(
+        &mut self,
+        name: impl Into<String>,
+        proxy: Option<ProxyConfig>,
+    ) -> super::Result<()> {
         let name = name.into();
 
         if self.contexts.contains_key(&name) {
@@ -278,9 +309,9 @@ impl BrowserState {
             )));
         }
 
-        tracing::info!(name = %name, "Creating browser context");
+        tracing::info!(name = %name, proxy = ?proxy.as_ref().map(|p| &p.server), "Creating browser context");
 
-        self.create_context_internal(&name).await
+        self.create_context_internal(&name, proxy).await
     }
 
     /// Switch to a named context
@@ -321,9 +352,9 @@ impl BrowserState {
         if self.active_context == name {
             self.active_context = DEFAULT_CONTEXT.to_string();
 
-            // Ensure default context exists
+            // Ensure default context exists (without proxy)
             if !self.contexts.contains_key(DEFAULT_CONTEXT) {
-                self.create_context_internal(DEFAULT_CONTEXT).await?;
+                self.create_context_internal(DEFAULT_CONTEXT, None).await?;
             }
         }
 

@@ -15,7 +15,7 @@ mod stale;
 mod tests;
 
 pub use capture::{AccessibilitySnapshot, SnapshotOptions};
-pub use classification::{classify_role, ElementTier};
+pub use classification::{ElementTier, classify_role};
 pub use element::SnapshotElement;
 pub use error::{SnapshotError, SnapshotResult};
 pub use format::SnapshotFormatter;

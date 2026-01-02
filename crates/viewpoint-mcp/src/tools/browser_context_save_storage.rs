@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -37,11 +37,11 @@ impl Default for BrowserContextSaveStorageTool {
 
 #[async_trait]
 impl Tool for BrowserContextSaveStorageTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_context_save_storage"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Save the storage state (cookies and localStorage) of a browser context to a JSON file. \
          This can be used to persist authentication state for later use."
     }
@@ -70,9 +70,7 @@ impl Tool for BrowserContextSaveStorageTool {
 
         // Validate path is not empty
         if input.path.trim().is_empty() {
-            return Err(ToolError::InvalidParams(
-                "Path cannot be empty".to_string(),
-            ));
+            return Err(ToolError::InvalidParams("Path cannot be empty".to_string()));
         }
 
         // Ensure browser is initialized
@@ -81,88 +79,45 @@ impl Tool for BrowserContextSaveStorageTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Determine which context to use
+        // Determine which context to use and get context reference
         let context_name = input
             .name
             .as_deref()
-            .unwrap_or_else(|| browser.active_context_name());
+            .unwrap_or_else(|| browser.active_context_name())
+            .to_string();
 
-        // Get the context
-        let _context = browser
-            .active_context()
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get context: {e}")))?;
+        // Get the context state - if a specific name was provided, use that context
+        let context_state = if let Some(ref name) = input.name {
+            browser.get_context(name).map_err(|e| {
+                ToolError::ExecutionFailed(format!("Context '{name}' not found: {e}"))
+            })?
+        } else {
+            browser.active_context().map_err(|e| {
+                ToolError::ExecutionFailed(format!("Failed to get active context: {e}"))
+            })?
+        };
 
-        // TODO: Implement actual storage state saving when viewpoint-core supports it
-        // This would involve:
-        // 1. Getting cookies from the context via CDP
-        // 2. Getting localStorage from all pages via CDP
-        // 3. Writing the combined state to the specified file
+        // Get the underlying BrowserContext to collect storage state
+        let vp_context = context_state.context();
 
-        // For now, return a message indicating the feature is not yet implemented
-        Ok(format!(
-            "Storage state saving for context '{}' to '{}' is not yet implemented. \
-             This feature requires viewpoint-core storage state API support.",
-            context_name, input.path
-        ))
-    }
-}
+        // Collect storage state from the context
+        let storage_state = vp_context.storage_state().await.map_err(|e| {
+            ToolError::ExecutionFailed(format!("Failed to collect storage state: {e}"))
+        })?;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+        // Save to the specified path
+        storage_state.save(&input.path).await.map_err(|e| {
+            ToolError::ExecutionFailed(format!(
+                "Failed to save storage state to '{}': {e}",
+                input.path
+            ))
+        })?;
 
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserContextSaveStorageTool::new();
-
-        assert_eq!(tool.name(), "browser_context_save_storage");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("path")));
-        // name is not required
-        assert!(!schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("name")));
-    }
-
-    #[test]
-    fn test_input_parsing_minimal() {
-        let input: BrowserContextSaveStorageInput = serde_json::from_value(json!({
-            "path": "/tmp/storage.json"
-        }))
-        .unwrap();
-
-        assert!(input.name.is_none());
-        assert_eq!(input.path, "/tmp/storage.json");
-    }
-
-    #[test]
-    fn test_input_parsing_with_name() {
-        let input: BrowserContextSaveStorageInput = serde_json::from_value(json!({
-            "name": "auth-context",
-            "path": "/path/to/auth-storage.json"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, Some("auth-context".to_string()));
-        assert_eq!(input.path, "/path/to/auth-storage.json");
-    }
-
-    #[test]
-    fn test_input_parsing_default_context() {
-        let input: BrowserContextSaveStorageInput = serde_json::from_value(json!({
-            "name": "default",
-            "path": "./storage.json"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, Some("default".to_string()));
-        assert_eq!(input.path, "./storage.json");
+        Ok(serde_json::to_string(&json!({
+            "saved": true,
+            "context": context_name,
+            "path": input.path,
+            "message": format!("Storage state for context '{}' saved to '{}'", context_name, input.path)
+        })).unwrap_or_else(|_| format!("Storage state saved to '{}'", input.path)))
     }
 }

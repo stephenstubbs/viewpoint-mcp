@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -39,11 +39,11 @@ impl Default for BrowserHoverTool {
 
 #[async_trait]
 impl Tool for BrowserHoverTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_hover"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Hover the mouse over an element on the page. Useful for triggering hover states, \
          tooltips, or dropdown menus."
     }
@@ -76,9 +76,9 @@ impl Tool for BrowserHoverTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active page (need mutable context for cache invalidation)
         let context = browser
-            .active_context()
+            .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
         let page = context
@@ -107,41 +107,12 @@ impl Tool for BrowserHoverTool {
             ))
         })?;
 
+        // Invalidate cache after hover (DOM may have changed via hover effects)
+        context.invalidate_cache();
+
         Ok(format!(
             "Hovering over {} [ref={}]",
             input.element, input.element_ref
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserHoverTool::new();
-
-        assert_eq!(tool.name(), "browser_hover");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("ref")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserHoverInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Menu item"
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, "e1a2b3c");
-        assert_eq!(input.element, "Menu item");
     }
 }

@@ -89,7 +89,9 @@ fn test_is_connection_loss_error_variants() {
     assert!(BrowserState::is_connection_loss_error("WebSocket error"));
     assert!(BrowserState::is_connection_loss_error("WebSocket closed"));
     assert!(BrowserState::is_connection_loss_error("channel closed"));
-    assert!(BrowserState::is_connection_loss_error("browser disconnected"));
+    assert!(BrowserState::is_connection_loss_error(
+        "browser disconnected"
+    ));
     assert!(BrowserState::is_connection_loss_error(
         "CDP connection failed"
     ));
@@ -99,9 +101,15 @@ fn test_is_connection_loss_error_variants() {
 fn test_is_connection_loss_error_non_connection() {
     // These should NOT trigger connection loss recovery
     assert!(!BrowserState::is_connection_loss_error("Element not found"));
-    assert!(!BrowserState::is_connection_loss_error("Timeout waiting for selector"));
-    assert!(!BrowserState::is_connection_loss_error("Navigation failed: 404"));
-    assert!(!BrowserState::is_connection_loss_error("JavaScript error: undefined"));
+    assert!(!BrowserState::is_connection_loss_error(
+        "Timeout waiting for selector"
+    ));
+    assert!(!BrowserState::is_connection_loss_error(
+        "Navigation failed: 404"
+    ));
+    assert!(!BrowserState::is_connection_loss_error(
+        "JavaScript error: undefined"
+    ));
     assert!(!BrowserState::is_connection_loss_error("Invalid selector"));
 }
 

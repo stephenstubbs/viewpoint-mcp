@@ -37,11 +37,11 @@ impl Default for BrowserResizeTool {
 
 #[async_trait]
 impl Tool for BrowserResizeTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_resize"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Resize the browser viewport to the specified dimensions. \
          This affects how the page is rendered and can trigger responsive layouts."
     }
@@ -66,6 +66,8 @@ impl Tool for BrowserResizeTool {
     }
 
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
+        const MAX_DIMENSION: i32 = 16384;
+
         // Parse input
         let input: BrowserResizeInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
@@ -83,7 +85,6 @@ impl Tool for BrowserResizeTool {
         }
 
         // Reasonable maximum dimensions
-        const MAX_DIMENSION: i32 = 16384;
         if input.width > MAX_DIMENSION {
             return Err(ToolError::InvalidParams(format!(
                 "Width cannot exceed {MAX_DIMENSION} pixels"
@@ -122,69 +123,5 @@ impl Tool for BrowserResizeTool {
             "Resized viewport to {}x{} pixels",
             input.width, input.height
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserResizeTool::new();
-
-        assert_eq!(tool.name(), "browser_resize");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(
-            schema["required"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("width"))
-        );
-        assert!(
-            schema["required"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("height"))
-        );
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserResizeInput = serde_json::from_value(json!({
-            "width": 1920,
-            "height": 1080
-        }))
-        .unwrap();
-
-        assert_eq!(input.width, 1920);
-        assert_eq!(input.height, 1080);
-    }
-
-    #[test]
-    fn test_input_parsing_mobile_dimensions() {
-        let input: BrowserResizeInput = serde_json::from_value(json!({
-            "width": 375,
-            "height": 812
-        }))
-        .unwrap();
-
-        assert_eq!(input.width, 375);
-        assert_eq!(input.height, 812);
-    }
-
-    #[test]
-    fn test_input_parsing_large_dimensions() {
-        let input: BrowserResizeInput = serde_json::from_value(json!({
-            "width": 3840,
-            "height": 2160
-        }))
-        .unwrap();
-
-        assert_eq!(input.width, 3840);
-        assert_eq!(input.height, 2160);
     }
 }

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -64,11 +64,11 @@ impl Default for BrowserTakeScreenshotTool {
 
 #[async_trait]
 impl Tool for BrowserTakeScreenshotTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_take_screenshot"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Take a screenshot of the current page. Can capture the viewport, full page, \
          or a specific element. Use browser_snapshot for interacting with elements."
     }
@@ -105,6 +105,8 @@ impl Tool for BrowserTakeScreenshotTool {
     }
 
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
+        use base64::engine::{Engine as _, general_purpose::STANDARD};
+
         // Parse input
         let input: BrowserTakeScreenshotInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
@@ -160,7 +162,7 @@ impl Tool for BrowserTakeScreenshotTool {
                 .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
             snapshot.lookup(element_ref_str).map_err(|e| {
-                ToolError::ElementNotFound(format!("Element ref '{}': {}", element_ref_str, e))
+                ToolError::ElementNotFound(format!("Element ref '{element_ref_str}': {e}"))
             })?;
 
             // Get the locator for the element
@@ -178,8 +180,7 @@ impl Tool for BrowserTakeScreenshotTool {
                 })?
                 .ok_or_else(|| {
                     ToolError::ElementNotFound(format!(
-                        "Element ref '{}' has no bounding box (may be hidden)",
-                        element_ref_str
+                        "Element ref '{element_ref_str}' has no bounding box (may be hidden)"
                     ))
                 })?;
 
@@ -187,7 +188,9 @@ impl Tool for BrowserTakeScreenshotTool {
                 .clip(bbox.x, bbox.y, bbox.width, bbox.height)
                 .capture()
                 .await
-                .map_err(|e| ToolError::ExecutionFailed(format!("Element screenshot failed: {e}")))?
+                .map_err(|e| {
+                    ToolError::ExecutionFailed(format!("Element screenshot failed: {e}"))
+                })?
         } else {
             // Page screenshot
             let mut builder = page.screenshot();
@@ -201,7 +204,6 @@ impl Tool for BrowserTakeScreenshotTool {
         };
 
         // Encode as base64 for MCP response
-        use base64::engine::{Engine as _, general_purpose::STANDARD};
         let base64_data = STANDARD.encode(&screenshot_bytes);
 
         // Return information about the screenshot
@@ -220,54 +222,5 @@ impl Tool for BrowserTakeScreenshotTool {
             screenshot_bytes.len(),
             base64_data.len()
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserTakeScreenshotTool::new();
-
-        assert_eq!(tool.name(), "browser_take_screenshot");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-    }
-
-    #[test]
-    fn test_input_defaults() {
-        let input: BrowserTakeScreenshotInput = serde_json::from_value(json!({})).unwrap();
-
-        assert!(input.element_ref.is_none());
-        assert!(!input.full_page);
-        assert!(matches!(input.image_type, ImageFormat::Png));
-    }
-
-    #[test]
-    fn test_input_full_page() {
-        let input: BrowserTakeScreenshotInput = serde_json::from_value(json!({
-            "fullPage": true,
-            "type": "jpeg"
-        }))
-        .unwrap();
-
-        assert!(input.full_page);
-        assert!(matches!(input.image_type, ImageFormat::Jpeg));
-    }
-
-    #[test]
-    fn test_input_element_screenshot() {
-        let input: BrowserTakeScreenshotInput = serde_json::from_value(json!({
-            "ref": "e1a2b3c",
-            "element": "Login form"
-        }))
-        .unwrap();
-
-        assert_eq!(input.element_ref, Some("e1a2b3c".to_string()));
-        assert_eq!(input.element, Some("Login form".to_string()));
     }
 }

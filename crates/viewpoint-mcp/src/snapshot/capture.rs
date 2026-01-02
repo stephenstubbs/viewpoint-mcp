@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use viewpoint_core::page::locator::aria::AriaSnapshot as VpAriaSnapshot;
 use viewpoint_core::Page;
+use viewpoint_core::page::locator::aria::AriaSnapshot as VpAriaSnapshot;
 
 use super::classification::is_interactive_container;
 use super::element::{CheckedState, SnapshotElement};
@@ -31,7 +31,7 @@ pub struct AccessibilitySnapshot {
     /// The root element of the snapshot tree
     root: SnapshotElement,
 
-    /// Map from ref string (e.g., "e12345") to ElementRef (for lookup)
+    /// Map from ref string (e.g., "c0p0f0e1") to `ElementRef` (for lookup)
     ref_map: HashMap<String, ElementRef>,
 
     /// Whether compact mode is active
@@ -64,11 +64,8 @@ impl AccessibilitySnapshot {
             .map_err(|e| SnapshotError::CaptureError(e.to_string()))?;
 
         let mut ref_map = HashMap::new();
-        let root = Self::convert_aria_snapshot(
-            &aria_snapshot,
-            &mut ref_map,
-            options.context.as_deref(),
-        );
+        let root =
+            Self::convert_aria_snapshot(&aria_snapshot, &mut ref_map, options.context.as_deref());
 
         // Determine if we need compact mode
         let interactive_count = root.count_refs();
@@ -157,15 +154,14 @@ impl AccessibilitySnapshot {
 
     /// Look up an element by its reference
     pub fn lookup(&self, ref_str: &str) -> SnapshotResult<&ElementRef> {
-        let element_ref = ElementRef::parse(ref_str)
-            .map_err(SnapshotError::InvalidRefFormat)?;
+        let element_ref = ElementRef::parse(ref_str).map_err(SnapshotError::InvalidRefFormat)?;
 
         // Validate against stale detector
         if let Err(stale_err) = self.stale_detector.validate_ref(&element_ref) {
             return Err(SnapshotError::StaleRef(stale_err.to_string()));
         }
 
-        // Look up by the raw ref string (e.g., "e12345")
+        // Look up by the raw ref string (e.g., "c0p0f0e1")
         self.ref_map
             .get(element_ref.ref_string())
             .ok_or_else(|| SnapshotError::RefNotFound(ref_str.to_string()))

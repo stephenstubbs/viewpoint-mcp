@@ -107,11 +107,7 @@ pub fn classify_role(role: &str) -> ElementTier {
 /// receive refs.
 #[allow(dead_code)]
 #[must_use]
-pub fn should_receive_ref(
-    role: &str,
-    in_interactive_container: bool,
-    has_tabindex: bool,
-) -> bool {
+pub fn should_receive_ref(role: &str, in_interactive_container: bool, has_tabindex: bool) -> bool {
     // Elements with tabindex >= 0 always receive refs
     if has_tabindex {
         return true;

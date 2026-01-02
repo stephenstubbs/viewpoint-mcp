@@ -17,7 +17,7 @@ const MAX_PREALLOC_DEPTH: usize = 32;
 /// Estimated bytes per element for buffer pre-allocation
 const ESTIMATED_BYTES_PER_ELEMENT: usize = 80;
 
-/// Pre-allocated indent strings for common depths (0 to MAX_PREALLOC_DEPTH)
+/// Pre-allocated indent strings for common depths (0 to `MAX_PREALLOC_DEPTH`)
 static INDENT_CACHE: LazyLock<Vec<String>> = LazyLock::new(|| {
     (0..=MAX_PREALLOC_DEPTH)
         .map(|depth| INDENT.repeat(depth))
@@ -70,11 +70,13 @@ impl SnapshotFormatter {
 
     /// Format a snapshot element tree with an optional element count hint for buffer sizing
     #[must_use]
-    pub fn format_with_hint(&self, root: &SnapshotElement, element_count_hint: Option<usize>) -> String {
+    pub fn format_with_hint(
+        &self,
+        root: &SnapshotElement,
+        element_count_hint: Option<usize>,
+    ) -> String {
         // Pre-allocate output buffer based on element count
-        let capacity = element_count_hint
-            .map(|count| count * ESTIMATED_BYTES_PER_ELEMENT)
-            .unwrap_or(1024);
+        let capacity = element_count_hint.map_or(1024, |count| count * ESTIMATED_BYTES_PER_ELEMENT);
         let mut output = String::with_capacity(capacity);
 
         self.format_element(&mut output, root, 0);
@@ -149,9 +151,10 @@ impl SnapshotFormatter {
         }
 
         if let Some(selected) = element.selected
-            && selected {
-                output.push_str(" (selected)");
-            }
+            && selected
+        {
+            output.push_str(" (selected)");
+        }
 
         if let Some(checked) = &element.checked {
             match checked {
@@ -162,9 +165,10 @@ impl SnapshotFormatter {
         }
 
         if let Some(pressed) = element.pressed
-            && pressed {
-                output.push_str(" (pressed)");
-            }
+            && pressed
+        {
+            output.push_str(" (pressed)");
+        }
 
         if let Some(level) = element.level {
             let _ = write!(output, " (level {level})");

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::{debug, instrument};
 
 use super::{Tool, ToolError, ToolResult};
@@ -38,12 +38,12 @@ impl Default for BrowserSnapshotTool {
 #[async_trait]
 impl Tool for BrowserSnapshotTool {
     #[allow(clippy::unnecessary_literal_bound)]
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_snapshot"
     }
 
     #[allow(clippy::unnecessary_literal_bound)]
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Capture accessibility snapshot of the current page. Returns a structured text \
          representation of the page's accessibility tree, with element references (refs) \
          that can be used to interact with elements."
@@ -157,9 +157,8 @@ impl Tool for BrowserSnapshotTool {
 
         // Add usage hint if in compact mode
         if compact {
-            result.push_str(
-                "\n\n[Hint: Use allRefs: true to see refs for all interactive elements]",
-            );
+            result
+                .push_str("\n\n[Hint: Use allRefs: true to see refs for all interactive elements]");
         }
 
         // Cache the snapshot for future requests
@@ -169,34 +168,5 @@ impl Tool for BrowserSnapshotTool {
         context.cache_snapshot(snapshot, input.all_refs);
 
         Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserSnapshotTool::new();
-
-        assert_eq!(tool.name(), "browser_snapshot");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["properties"]["allRefs"].is_object());
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserSnapshotInput = serde_json::from_value(json!({})).unwrap();
-        assert!(!input.all_refs);
-
-        let input: BrowserSnapshotInput = serde_json::from_value(json!({
-            "allRefs": true
-        }))
-        .unwrap();
-        assert!(input.all_refs);
     }
 }

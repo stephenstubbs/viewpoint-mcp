@@ -1,7 +1,7 @@
 # browser-tools Specification
 
 ## Purpose
-TBD - created by archiving change add-core-browser-tools. Update Purpose after archive.
+This specification defines the browser automation tools exposed through the MCP protocol. These tools enable AI agents to navigate web pages, interact with elements, capture screenshots, manage browser contexts, and perform other browser automation tasks using element references from accessibility snapshots.
 ## Requirements
 ### Requirement: Navigation Tools
 The system SHALL provide tools for page navigation.
@@ -36,6 +36,20 @@ The system SHALL provide tools for interacting with page elements using accessib
 - **THEN** the click is performed
 - **AND** the system waits for the navigation to complete (up to navigation timeout)
 - **AND** waits for the page to reach load state before returning
+
+#### Scenario: Right-click element
+- **WHEN** `browser_click` is called with `ref: "e1a2b3"` and `button: "right"`
+- **THEN** the element is right-clicked via the locator
+- **AND** context menu events are triggered
+
+#### Scenario: Middle-click element
+- **WHEN** `browser_click` is called with `ref: "e1a2b3"` and `button: "middle"`
+- **THEN** the element is middle-clicked via the locator
+
+#### Scenario: Click with modifier keys
+- **WHEN** `browser_click` is called with `ref: "e1a2b3"` and `modifiers: ["Control"]`
+- **THEN** the Control key is held during the click
+- **AND** the click behavior reflects the modifier (e.g., Ctrl+click opens in new tab for links)
 
 #### Scenario: Double click
 - **WHEN** `browser_click` is called with `ref: "e1a2b3"` and `doubleClick: true`
@@ -277,6 +291,7 @@ The system SHALL provide tools for managing multiple isolated browser contexts.
 #### Scenario: Create context with storage state
 - **WHEN** `browser_context_create` is called with `storageState: "/path/to/cookies.json"`
 - **THEN** the context is initialized with saved cookies and localStorage
+- **Note**: Implementation pending viewpoint-core storage state API support
 
 #### Scenario: Switch context
 - **WHEN** `browser_context_switch` is called with `name: "returning_user"`
@@ -303,6 +318,6 @@ The system SHALL provide tools for managing multiple isolated browser contexts.
 
 #### Scenario: Save context storage state
 - **WHEN** `browser_context_save_storage` is called with `name: "logged_in"` and `path: "/path/to/save.json"`
-- **THEN** the context's cookies and localStorage are saved to the file
-- **AND** the file can be used with `storageState` in future context creation
+- **THEN** the system returns an error indicating storage state export is not yet available
+- **Note**: Full implementation pending viewpoint-core storage state export API
 

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
 
 use super::{Tool, ToolError, ToolResult};
@@ -41,11 +41,11 @@ impl Default for BrowserWaitForTool {
 
 #[async_trait]
 impl Tool for BrowserWaitForTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_wait_for"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Wait for a condition: text to appear, text to disappear, or a specified time to pass. \
          Only one of text, textGone, or time should be provided."
     }
@@ -133,116 +133,47 @@ impl Tool for BrowserWaitForTool {
         if let Some(ref text) = input.text {
             // Escape the text for use in JavaScript
             let escaped_text = text.replace('\\', "\\\\").replace('"', "\\\"");
-            let js_condition = format!(
-                r#"() => document.body.innerText.includes("{}")"#,
-                escaped_text
-            );
+            let js_condition =
+                format!(r#"() => document.body.innerText.includes("{escaped_text}")"#);
 
             page.wait_for_function(&js_condition)
                 .wait()
                 .await
                 .map_err(|e| {
-                    ToolError::Timeout(format!("Timeout waiting for text '{}': {}", text, e))
+                    ToolError::Timeout(format!("Timeout waiting for text '{text}': {e}"))
                 })?;
 
             // Invalidate cache as page content changed
             context.invalidate_cache();
 
-            return Ok(format!("Text '{}' appeared on page", text));
+            return Ok(format!("Text '{text}' appeared on page"));
         }
 
         // Handle text disappearance wait using wait_for_function
         if let Some(ref text) = input.text_gone {
             // Escape the text for use in JavaScript
             let escaped_text = text.replace('\\', "\\\\").replace('"', "\\\"");
-            let js_condition = format!(
-                r#"() => !document.body.innerText.includes("{}")"#,
-                escaped_text
-            );
+            let js_condition =
+                format!(r#"() => !document.body.innerText.includes("{escaped_text}")"#);
 
             page.wait_for_function(&js_condition)
                 .wait()
                 .await
                 .map_err(|e| {
                     ToolError::Timeout(format!(
-                        "Timeout waiting for text '{}' to disappear: {}",
-                        text, e
+                        "Timeout waiting for text '{text}' to disappear: {e}"
                     ))
                 })?;
 
             // Invalidate cache as page content changed
             context.invalidate_cache();
 
-            return Ok(format!("Text '{}' disappeared from page", text));
+            return Ok(format!("Text '{text}' disappeared from page"));
         }
 
         // This shouldn't be reachable due to earlier validation
         Err(ToolError::InvalidParams(
             "No valid wait condition provided".to_string(),
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserWaitForTool::new();
-
-        assert_eq!(tool.name(), "browser_wait_for");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["properties"]["text"].is_object());
-        assert!(schema["properties"]["textGone"].is_object());
-        assert!(schema["properties"]["time"].is_object());
-    }
-
-    #[test]
-    fn test_input_parsing_text() {
-        let input: BrowserWaitForInput = serde_json::from_value(json!({
-            "text": "Loading complete"
-        }))
-        .unwrap();
-
-        assert_eq!(input.text, Some("Loading complete".to_string()));
-        assert!(input.text_gone.is_none());
-        assert!(input.time.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_text_gone() {
-        let input: BrowserWaitForInput = serde_json::from_value(json!({
-            "textGone": "Loading..."
-        }))
-        .unwrap();
-
-        assert!(input.text.is_none());
-        assert_eq!(input.text_gone, Some("Loading...".to_string()));
-        assert!(input.time.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_time() {
-        let input: BrowserWaitForInput = serde_json::from_value(json!({
-            "time": 2.5
-        }))
-        .unwrap();
-
-        assert!(input.text.is_none());
-        assert!(input.text_gone.is_none());
-        assert_eq!(input.time, Some(2.5));
-    }
-
-    #[test]
-    fn test_input_parsing_empty() {
-        let input: BrowserWaitForInput = serde_json::from_value(json!({})).unwrap();
-
-        assert!(input.text.is_none());
-        assert!(input.text_gone.is_none());
-        assert!(input.time.is_none());
     }
 }

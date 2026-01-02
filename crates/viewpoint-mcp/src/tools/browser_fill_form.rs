@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -74,11 +74,11 @@ impl Default for BrowserFillFormTool {
 
 #[async_trait]
 impl Tool for BrowserFillFormTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_fill_form"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Fill multiple form fields at once. Supports textbox, checkbox, radio, combobox (dropdown), \
          and slider field types. Each field requires a ref from browser_snapshot."
     }
@@ -200,12 +200,16 @@ impl Tool for BrowserFillFormTool {
                 }
                 FieldType::Combobox => {
                     // Use the new builder API from viewpoint 0.2.10
-                    locator.select_option().value(&field.value).await.map_err(|e| {
-                        ToolError::ExecutionFailed(format!(
-                            "Failed to select option in '{}': {}",
-                            field.name, e
-                        ))
-                    })?;
+                    locator
+                        .select_option()
+                        .value(&field.value)
+                        .await
+                        .map_err(|e| {
+                            ToolError::ExecutionFailed(format!(
+                                "Failed to select option in '{}': {}",
+                                field.name, e
+                            ))
+                        })?;
                 }
                 FieldType::Slider => {
                     // For sliders, we fill the value which works for range inputs
@@ -229,99 +233,5 @@ impl Tool for BrowserFillFormTool {
             filled_fields.len(),
             filled_fields.join(", ")
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserFillFormTool::new();
-
-        assert_eq!(tool.name(), "browser_fill_form");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("fields")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserFillFormInput = serde_json::from_value(json!({
-            "fields": [
-                {
-                    "name": "Email",
-                    "type": "textbox",
-                    "ref": "e1a2b3c",
-                    "value": "user@example.com"
-                }
-            ]
-        }))
-        .unwrap();
-
-        assert_eq!(input.fields.len(), 1);
-        assert_eq!(input.fields[0].name, "Email");
-        assert_eq!(input.fields[0].field_type, FieldType::Textbox);
-        assert_eq!(input.fields[0].element_ref, "e1a2b3c");
-        assert_eq!(input.fields[0].value, "user@example.com");
-    }
-
-    #[test]
-    fn test_multiple_fields() {
-        let input: BrowserFillFormInput = serde_json::from_value(json!({
-            "fields": [
-                {
-                    "name": "Username",
-                    "type": "textbox",
-                    "ref": "e1",
-                    "value": "johndoe"
-                },
-                {
-                    "name": "Remember me",
-                    "type": "checkbox",
-                    "ref": "e2",
-                    "value": "true"
-                },
-                {
-                    "name": "Country",
-                    "type": "combobox",
-                    "ref": "e3",
-                    "value": "United States"
-                }
-            ]
-        }))
-        .unwrap();
-
-        assert_eq!(input.fields.len(), 3);
-        assert_eq!(input.fields[0].field_type, FieldType::Textbox);
-        assert_eq!(input.fields[1].field_type, FieldType::Checkbox);
-        assert_eq!(input.fields[2].field_type, FieldType::Combobox);
-    }
-
-    #[test]
-    fn test_all_field_types() {
-        let input: BrowserFillFormInput = serde_json::from_value(json!({
-            "fields": [
-                { "name": "Text", "type": "textbox", "ref": "e1", "value": "test" },
-                { "name": "Check", "type": "checkbox", "ref": "e2", "value": "false" },
-                { "name": "Radio", "type": "radio", "ref": "e3", "value": "option1" },
-                { "name": "Select", "type": "combobox", "ref": "e4", "value": "Option A" },
-                { "name": "Range", "type": "slider", "ref": "e5", "value": "50" }
-            ]
-        }))
-        .unwrap();
-
-        assert_eq!(input.fields.len(), 5);
-        assert_eq!(input.fields[0].field_type, FieldType::Textbox);
-        assert_eq!(input.fields[1].field_type, FieldType::Checkbox);
-        assert_eq!(input.fields[2].field_type, FieldType::Radio);
-        assert_eq!(input.fields[3].field_type, FieldType::Combobox);
-        assert_eq!(input.fields[4].field_type, FieldType::Slider);
     }
 }

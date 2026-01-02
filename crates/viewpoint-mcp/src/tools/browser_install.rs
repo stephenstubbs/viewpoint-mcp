@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -33,11 +33,11 @@ impl Default for BrowserInstallTool {
 
 #[async_trait]
 impl Tool for BrowserInstallTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_install"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Install the browser if it is not already installed. Call this if you get an error \
          about the browser not being installed. This will download and set up the browser \
          executable required for automation."
@@ -91,47 +91,11 @@ impl Tool for BrowserInstallTool {
                 } else {
                     // Some other error - might be a connection issue or config problem
                     Err(ToolError::ExecutionFailed(format!(
-                        "Failed to initialize browser: {}. \
-                         If the browser is not installed, the error message should indicate that.",
-                        error_msg
+                        "Failed to initialize browser: {error_msg}. \
+                         If the browser is not installed, the error message should indicate that."
                     )))
                 }
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserInstallTool::new();
-
-        assert_eq!(tool.name(), "browser_install");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        // No required properties
-        assert!(schema.get("required").is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_empty() {
-        let input: BrowserInstallInput = serde_json::from_value(json!({})).unwrap();
-        // Just verify it parses without error
-        let _ = input;
-    }
-
-    #[test]
-    fn test_input_parsing_with_extra_fields() {
-        // Extra fields should be ignored
-        let input: BrowserInstallInput = serde_json::from_value(json!({
-            "unknownField": "value"
-        }))
-        .unwrap();
-        let _ = input;
     }
 }

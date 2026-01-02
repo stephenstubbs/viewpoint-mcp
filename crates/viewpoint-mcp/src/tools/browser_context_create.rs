@@ -2,7 +2,8 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use viewpoint_core::ProxyConfig;
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -27,9 +28,8 @@ pub struct BrowserContextCreateInput {
 /// Proxy configuration input
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)] // Fields will be used when proxy support is implemented
 pub struct ProxyInput {
-    /// Proxy server URL (e.g., "socks5://proxy:1080")
+    /// Proxy server URL (e.g., "<socks5://proxy:1080>")
     pub server: String,
 
     /// Optional username for authentication
@@ -37,6 +37,17 @@ pub struct ProxyInput {
 
     /// Optional password for authentication
     pub password: Option<String>,
+}
+
+impl ProxyInput {
+    /// Convert to viewpoint-core's `ProxyConfig`
+    fn to_proxy_config(&self) -> ProxyConfig {
+        let mut config = ProxyConfig::new(&self.server);
+        if let (Some(username), Some(password)) = (&self.username, &self.password) {
+            config = config.credentials(username, password);
+        }
+        config
+    }
 }
 
 impl BrowserContextCreateTool {
@@ -55,11 +66,11 @@ impl Default for BrowserContextCreateTool {
 
 #[async_trait]
 impl Tool for BrowserContextCreateTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_context_create"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Create a new isolated browser context with its own cookies, storage, and cache. \
          The new context becomes the active context."
     }
@@ -101,6 +112,8 @@ impl Tool for BrowserContextCreateTool {
     }
 
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
+        use std::fmt::Write;
+
         // Parse input
         let input: BrowserContextCreateInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
@@ -118,107 +131,26 @@ impl Tool for BrowserContextCreateTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Create the new context
+        // Convert proxy input to ProxyConfig if provided
+        let proxy_config = input.proxy.as_ref().map(ProxyInput::to_proxy_config);
+
+        // Create the new context with optional proxy configuration
         browser
-            .create_context(&input.name)
+            .create_context_with_options(&input.name, proxy_config)
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create context: {e}")))?;
 
-        // TODO: Apply proxy configuration when viewpoint-core supports it
-        // TODO: Load storage state from file when viewpoint-core supports it
-
         let mut result = format!("Created browser context '{}' and set as active", input.name);
 
-        if input.proxy.is_some() {
-            result.push_str(" (proxy configuration noted but not yet applied)");
+        if let Some(ref proxy) = input.proxy {
+            let _ = write!(result, " with proxy '{}'", proxy.server);
         }
 
+        // Storage state loading not yet implemented in viewpoint-core
         if input.storage_state.is_some() {
             result.push_str(" (storage state loading not yet implemented)");
         }
 
         Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserContextCreateTool::new();
-
-        assert_eq!(tool.name(), "browser_context_create");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("name")));
-    }
-
-    #[test]
-    fn test_input_parsing_minimal() {
-        let input: BrowserContextCreateInput = serde_json::from_value(json!({
-            "name": "test-context"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "test-context");
-        assert!(input.proxy.is_none());
-        assert!(input.storage_state.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_with_proxy() {
-        let input: BrowserContextCreateInput = serde_json::from_value(json!({
-            "name": "proxy-context",
-            "proxy": {
-                "server": "socks5://proxy.example.com:1080",
-                "username": "user",
-                "password": "pass"
-            }
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "proxy-context");
-        let proxy = input.proxy.unwrap();
-        assert_eq!(proxy.server, "socks5://proxy.example.com:1080");
-        assert_eq!(proxy.username, Some("user".to_string()));
-        assert_eq!(proxy.password, Some("pass".to_string()));
-    }
-
-    #[test]
-    fn test_input_parsing_with_storage_state() {
-        let input: BrowserContextCreateInput = serde_json::from_value(json!({
-            "name": "auth-context",
-            "storageState": "/path/to/storage.json"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "auth-context");
-        assert_eq!(
-            input.storage_state,
-            Some("/path/to/storage.json".to_string())
-        );
-    }
-
-    #[test]
-    fn test_input_parsing_full() {
-        let input: BrowserContextCreateInput = serde_json::from_value(json!({
-            "name": "full-context",
-            "proxy": {
-                "server": "http://proxy:8080"
-            },
-            "storageState": "/tmp/state.json"
-        }))
-        .unwrap();
-
-        assert_eq!(input.name, "full-context");
-        assert!(input.proxy.is_some());
-        assert!(input.storage_state.is_some());
     }
 }

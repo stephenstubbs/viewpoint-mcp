@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -14,7 +14,7 @@ pub struct BrowserPressKeyTool;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BrowserPressKeyInput {
-    /// Key name to press (e.g., "Enter", "Tab", "Control+a", "ArrowLeft")
+    /// Key name to press (e.g., "Enter", "Tab", "Control+a", "`ArrowLeft`")
     pub key: String,
 }
 
@@ -34,11 +34,11 @@ impl Default for BrowserPressKeyTool {
 
 #[async_trait]
 impl Tool for BrowserPressKeyTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_press_key"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Press a keyboard key. Supports key names like 'Enter', 'Tab', 'Escape', 'ArrowLeft', \
          and key combinations like 'Control+a', 'Shift+Tab', 'Alt+F4'."
     }
@@ -81,64 +81,13 @@ impl Tool for BrowserPressKeyTool {
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Press the key using the keyboard API
-        page.keyboard()
-            .press(&input.key)
-            .await
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to press key '{}': {}", input.key, e)))?;
+        page.keyboard().press(&input.key).await.map_err(|e| {
+            ToolError::ExecutionFailed(format!("Failed to press key '{}': {}", input.key, e))
+        })?;
 
         // Invalidate cache after keyboard interaction
         context.invalidate_cache();
 
         Ok(format!("Pressed key '{}'", input.key))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserPressKeyTool::new();
-
-        assert_eq!(tool.name(), "browser_press_key");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("key")));
-    }
-
-    #[test]
-    fn test_input_parsing() {
-        let input: BrowserPressKeyInput = serde_json::from_value(json!({
-            "key": "Enter"
-        }))
-        .unwrap();
-
-        assert_eq!(input.key, "Enter");
-    }
-
-    #[test]
-    fn test_input_with_modifier() {
-        let input: BrowserPressKeyInput = serde_json::from_value(json!({
-            "key": "Control+a"
-        }))
-        .unwrap();
-
-        assert_eq!(input.key, "Control+a");
-    }
-
-    #[test]
-    fn test_input_arrow_key() {
-        let input: BrowserPressKeyInput = serde_json::from_value(json!({
-            "key": "ArrowLeft"
-        }))
-        .unwrap();
-
-        assert_eq!(input.key, "ArrowLeft");
     }
 }

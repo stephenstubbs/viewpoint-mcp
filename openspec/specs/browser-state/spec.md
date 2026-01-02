@@ -1,7 +1,7 @@
 # browser-state Specification
 
 ## Purpose
-TBD - created by archiving change fix-browser-connection-recovery. Update Purpose after archive.
+This specification defines browser state management, including lifecycle management, connection handling, and recovery from connection failures. The browser state system ensures reliable operation across tool invocations and graceful handling of browser process issues.
 ## Requirements
 ### Requirement: Connection Loss Recovery
 

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::traits::Capability;
 use super::{Tool, ToolError, ToolResult};
@@ -41,7 +41,7 @@ pub struct BrowserPdfSaveInput {
 }
 
 /// Paper format options
-#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PaperFormat {
     #[default]
@@ -61,17 +61,17 @@ pub enum PaperFormat {
 impl From<PaperFormat> for viewpoint_core::PaperFormat {
     fn from(format: PaperFormat) -> Self {
         match format {
-            PaperFormat::Letter => viewpoint_core::PaperFormat::Letter,
-            PaperFormat::Legal => viewpoint_core::PaperFormat::Legal,
-            PaperFormat::Tabloid => viewpoint_core::PaperFormat::Tabloid,
-            PaperFormat::Ledger => viewpoint_core::PaperFormat::Ledger,
-            PaperFormat::A0 => viewpoint_core::PaperFormat::A0,
-            PaperFormat::A1 => viewpoint_core::PaperFormat::A1,
-            PaperFormat::A2 => viewpoint_core::PaperFormat::A2,
-            PaperFormat::A3 => viewpoint_core::PaperFormat::A3,
-            PaperFormat::A4 => viewpoint_core::PaperFormat::A4,
-            PaperFormat::A5 => viewpoint_core::PaperFormat::A5,
-            PaperFormat::A6 => viewpoint_core::PaperFormat::A6,
+            PaperFormat::Letter => Self::Letter,
+            PaperFormat::Legal => Self::Legal,
+            PaperFormat::Tabloid => Self::Tabloid,
+            PaperFormat::Ledger => Self::Ledger,
+            PaperFormat::A0 => Self::A0,
+            PaperFormat::A1 => Self::A1,
+            PaperFormat::A2 => Self::A2,
+            PaperFormat::A3 => Self::A3,
+            PaperFormat::A4 => Self::A4,
+            PaperFormat::A5 => Self::A5,
+            PaperFormat::A6 => Self::A6,
         }
     }
 }
@@ -92,11 +92,11 @@ impl Default for BrowserPdfSaveTool {
 
 #[async_trait]
 impl Tool for BrowserPdfSaveTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_pdf_save"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Save the current page as a PDF file. Supports various paper formats, \
          orientation, scaling, and page range selection."
     }
@@ -155,18 +155,16 @@ impl Tool for BrowserPdfSaveTool {
 
         // Validate path
         if input.path.is_empty() {
-            return Err(ToolError::InvalidParams(
-                "Path cannot be empty".to_string(),
-            ));
+            return Err(ToolError::InvalidParams("Path cannot be empty".to_string()));
         }
 
         // Validate scale if provided
-        if let Some(scale) = input.scale {
-            if !(0.1..=2.0).contains(&scale) {
-                return Err(ToolError::InvalidParams(
-                    "Scale must be between 0.1 and 2.0".to_string(),
-                ));
-            }
+        if let Some(scale) = input.scale
+            && !(0.1..=2.0).contains(&scale)
+        {
+            return Err(ToolError::InvalidParams(
+                "Scale must be between 0.1 and 2.0".to_string(),
+            ));
         }
 
         // Ensure browser is initialized
@@ -217,72 +215,5 @@ impl Tool for BrowserPdfSaveTool {
             input.format,
             input.landscape
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserPdfSaveTool::new();
-
-        assert_eq!(tool.name(), "browser_pdf_save");
-        assert!(tool.description().contains("PDF"));
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("path")));
-    }
-
-    #[test]
-    fn test_input_parsing_minimal() {
-        let input: BrowserPdfSaveInput = serde_json::from_value(json!({
-            "path": "/tmp/test.pdf"
-        }))
-        .unwrap();
-
-        assert_eq!(input.path, "/tmp/test.pdf");
-        assert_eq!(input.format, PaperFormat::Letter);
-        assert!(!input.landscape);
-        assert!(!input.print_background);
-        assert!(input.scale.is_none());
-        assert!(input.page_ranges.is_none());
-        assert!(input.margin.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_with_options() {
-        let input: BrowserPdfSaveInput = serde_json::from_value(json!({
-            "path": "/tmp/report.pdf",
-            "format": "a4",
-            "landscape": true,
-            "printBackground": true,
-            "scale": 0.8,
-            "pageRanges": "1-5, 10",
-            "margin": 0.5
-        }))
-        .unwrap();
-
-        assert_eq!(input.path, "/tmp/report.pdf");
-        assert_eq!(input.format, PaperFormat::A4);
-        assert!(input.landscape);
-        assert!(input.print_background);
-        assert_eq!(input.scale, Some(0.8));
-        assert_eq!(input.page_ranges, Some("1-5, 10".to_string()));
-        assert_eq!(input.margin, Some(0.5));
-    }
-
-    #[test]
-    fn test_paper_format_conversion() {
-        let letter: viewpoint_core::PaperFormat = PaperFormat::Letter.into();
-        assert!(matches!(letter, viewpoint_core::PaperFormat::Letter));
-
-        let a4: viewpoint_core::PaperFormat = PaperFormat::A4.into();
-        assert!(matches!(a4, viewpoint_core::PaperFormat::A4));
     }
 }

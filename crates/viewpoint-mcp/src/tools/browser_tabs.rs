@@ -51,11 +51,11 @@ impl Default for BrowserTabsTool {
 
 #[async_trait]
 impl Tool for BrowserTabsTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "browser_tabs"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Manage browser tabs. Actions: 'list' shows all tabs, 'new' creates a tab, \
          'close' closes a tab by index (or current), 'select' switches to a tab by index."
     }
@@ -100,6 +100,8 @@ impl Tool for BrowserTabsTool {
 
 impl BrowserTabsTool {
     async fn list_tabs(&self, browser: &BrowserState) -> ToolResult {
+        use std::fmt::Write;
+
         let context = browser
             .active_context()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
@@ -116,7 +118,7 @@ impl BrowserTabsTool {
         for i in 0..page_count {
             let marker = if i == active_index { " [active]" } else { "" };
             // In a full implementation, we'd get the actual URL/title of each page
-            result.push_str(&format!("  {i}: Tab {i}{marker}\n"));
+            let _ = writeln!(result, "  {i}: Tab {i}{marker}");
         }
 
         Ok(result.trim_end().to_string())
@@ -206,83 +208,5 @@ impl BrowserTabsTool {
                 "Failed to switch to tab at index {index}"
             )))
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tool_metadata() {
-        let tool = BrowserTabsTool::new();
-
-        assert_eq!(tool.name(), "browser_tabs");
-        assert!(!tool.description().is_empty());
-
-        let schema = tool.input_schema();
-        assert_eq!(schema["type"], "object");
-        assert!(
-            schema["required"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("action"))
-        );
-    }
-
-    #[test]
-    fn test_input_parsing_list() {
-        let input: BrowserTabsInput = serde_json::from_value(json!({
-            "action": "list"
-        }))
-        .unwrap();
-
-        assert!(matches!(input.action, TabAction::List));
-        assert!(input.index.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_new() {
-        let input: BrowserTabsInput = serde_json::from_value(json!({
-            "action": "new"
-        }))
-        .unwrap();
-
-        assert!(matches!(input.action, TabAction::New));
-    }
-
-    #[test]
-    fn test_input_parsing_close_with_index() {
-        let input: BrowserTabsInput = serde_json::from_value(json!({
-            "action": "close",
-            "index": 2
-        }))
-        .unwrap();
-
-        assert!(matches!(input.action, TabAction::Close));
-        assert_eq!(input.index, Some(2));
-    }
-
-    #[test]
-    fn test_input_parsing_close_without_index() {
-        let input: BrowserTabsInput = serde_json::from_value(json!({
-            "action": "close"
-        }))
-        .unwrap();
-
-        assert!(matches!(input.action, TabAction::Close));
-        assert!(input.index.is_none());
-    }
-
-    #[test]
-    fn test_input_parsing_select() {
-        let input: BrowserTabsInput = serde_json::from_value(json!({
-            "action": "select",
-            "index": 1
-        }))
-        .unwrap();
-
-        assert!(matches!(input.action, TabAction::Select));
-        assert_eq!(input.index, Some(1));
     }
 }
