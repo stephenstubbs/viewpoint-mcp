@@ -47,6 +47,8 @@ viewpoint-cdp = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { workspace = true }
 tempfile = "3.19"
+regex = "1.12.2"
+viewpoint-core.workspace = true
 
 [features]
 default = []

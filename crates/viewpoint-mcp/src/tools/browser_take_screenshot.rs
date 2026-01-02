@@ -163,11 +163,31 @@ impl Tool for BrowserTakeScreenshotTool {
                 ToolError::ElementNotFound(format!("Element ref '{}': {}", element_ref_str, e))
             })?;
 
-            // Use native ref resolution API from viewpoint 0.2.9
+            // Get the locator for the element
             let locator = page.locator_from_ref(element_ref_str);
-            locator.screenshot().capture().await.map_err(|e| {
-                ToolError::ExecutionFailed(format!("Element screenshot failed: {e}"))
-            })?
+
+            // Workaround: locator.screenshot() doesn't work with ref-based locators
+            // in viewpoint-core 0.2.16, so we use bounding_box + page screenshot with clip
+            let bbox = locator
+                .bounding_box()
+                .await
+                .map_err(|e| {
+                    ToolError::ExecutionFailed(format!(
+                        "Failed to get bounding box for element: {e}"
+                    ))
+                })?
+                .ok_or_else(|| {
+                    ToolError::ElementNotFound(format!(
+                        "Element ref '{}' has no bounding box (may be hidden)",
+                        element_ref_str
+                    ))
+                })?;
+
+            page.screenshot()
+                .clip(bbox.x, bbox.y, bbox.width, bbox.height)
+                .capture()
+                .await
+                .map_err(|e| ToolError::ExecutionFailed(format!("Element screenshot failed: {e}")))?
         } else {
             // Page screenshot
             let mut builder = page.screenshot();
