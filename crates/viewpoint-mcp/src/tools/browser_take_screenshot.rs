@@ -207,8 +207,13 @@ impl Tool for BrowserTakeScreenshotTool {
         let base64_data = STANDARD.encode(&screenshot_bytes);
 
         // Return information about the screenshot
-        let description = if let Some(ref element_desc) = input.element {
-            format!("element '{element_desc}'")
+        // Only describe as element screenshot if ref was provided (element alone is ignored)
+        let description = if input.element_ref.is_some() {
+            if let Some(ref element_desc) = input.element {
+                format!("element '{element_desc}'")
+            } else {
+                "element".to_string()
+            }
         } else if input.full_page {
             "full page".to_string()
         } else {
