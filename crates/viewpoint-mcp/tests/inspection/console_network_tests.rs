@@ -91,8 +91,7 @@ async fn test_network_requests_include_static() {
     let network_tool = BrowserNetworkRequestsTool::new();
 
     // Page with image reference (even if it doesn't load)
-    let html =
-        r#"<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">"#;
+    let html = r#"<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">"#;
 
     nav_tool
         .execute(

@@ -330,8 +330,8 @@ async fn test_browser_cdp_endpoint_connection() {
 
 #[tokio::test]
 async fn test_browser_context_with_proxy_config() {
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tokio::net::TcpListener;
 
     // Start a simple TCP listener to act as a "proxy"

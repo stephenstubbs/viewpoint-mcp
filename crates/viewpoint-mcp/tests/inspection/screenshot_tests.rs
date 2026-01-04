@@ -1,7 +1,9 @@
 //! Screenshot tool integration tests
 
 use serde_json::json;
-use viewpoint_mcp::tools::{BrowserNavigateTool, BrowserSnapshotTool, BrowserTakeScreenshotTool, Tool};
+use viewpoint_mcp::tools::{
+    BrowserNavigateTool, BrowserSnapshotTool, BrowserTakeScreenshotTool, Tool,
+};
 
 use super::create_browser;
 

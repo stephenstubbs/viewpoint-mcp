@@ -1,5 +1,7 @@
 //! Unit tests for accessibility snapshot system
 
+mod format_tests;
+
 use crate::snapshot::classification::{ElementTier, classify_role, should_receive_ref};
 use crate::snapshot::element::SnapshotElement;
 use crate::snapshot::format::SnapshotFormatter;
