@@ -203,17 +203,30 @@ impl BrowserTabsTool {
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context
-            .page_count()
+        let pages = context
+            .pages()
             .await
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
-        if index >= page_count {
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get pages: {e}")))?;
+
+        if index >= pages.len() {
             return Err(ToolError::InvalidParams(format!(
                 "Tab index {index} out of range (0-{})",
-                page_count.saturating_sub(1)
+                pages.len().saturating_sub(1)
             )));
         }
 
+        // Get the page at the target index and bring it to front
+        let page = pages
+            .into_iter()
+            .nth(index)
+            .ok_or_else(|| ToolError::ExecutionFailed("Page not found".to_string()))?;
+
+        // Bring the page to front in the browser UI
+        page.bring_to_front().await.map_err(|e| {
+            ToolError::ExecutionFailed(format!("Failed to bring tab to front: {e}"))
+        })?;
+
+        // Update internal tracking
         let switched = context.switch_page(index).await;
 
         if switched {
