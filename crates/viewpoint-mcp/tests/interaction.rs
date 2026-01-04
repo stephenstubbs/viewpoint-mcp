@@ -15,6 +15,7 @@ mod interaction {
     pub mod click_tests;
     pub mod drag_tests;
     pub mod form_tests;
+    pub mod iframe_tests;
     pub mod key_tests;
     pub mod type_tests;
 

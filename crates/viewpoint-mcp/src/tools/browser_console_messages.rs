@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{Tool, ToolError, ToolResult};
-use crate::browser::BrowserState;
+use crate::browser::{BrowserState, ConsoleLevel as BrowserConsoleLevel};
 
 /// Browser console messages tool - retrieves console log messages
 pub struct BrowserConsoleMessagesTool;
@@ -24,6 +24,18 @@ pub enum ConsoleLevel {
     Info,
     /// All messages including debug
     Debug,
+}
+
+impl ConsoleLevel {
+    /// Convert to browser console level for filtering.
+    fn to_browser_level(self) -> BrowserConsoleLevel {
+        match self {
+            Self::Error => BrowserConsoleLevel::Error,
+            Self::Warning => BrowserConsoleLevel::Warning,
+            Self::Info => BrowserConsoleLevel::Info,
+            Self::Debug => BrowserConsoleLevel::Debug,
+        }
+    }
 }
 
 /// Input parameters for `browser_console_messages`
@@ -86,38 +98,20 @@ impl Tool for BrowserConsoleMessagesTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active context
         let context = browser
             .active_context()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page = context
-            .active_page()
-            .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
-
-        // Use JavaScript to retrieve console messages from the page
-        // Note: This requires that we've injected a console interceptor beforehand
-        // For now, we provide a fallback that uses evaluate to get current console state
-        let js_code = r#"(() => {
-            // Check if we have captured console messages
-            if (window.__viewpointConsoleMessages) {
-                return window.__viewpointConsoleMessages;
-            }
-            // If not available, return empty array with note
-            return { note: "No console messages captured. Console monitoring may not be enabled." };
-        })()"#;
-
-        let result: serde_json::Value = page.evaluate(js_code).await.map_err(|e| {
-            ToolError::ExecutionFailed(format!("Failed to get console messages: {e}"))
+        // Get console buffer for active page
+        let console_buffer = context.active_console_buffer().ok_or_else(|| {
+            ToolError::BrowserNotAvailable("No active page for console messages".to_string())
         })?;
 
-        // Check if we got a note about no messages
-        if let Some(note) = result.get("note").and_then(|n| n.as_str()) {
-            return Ok(format!(
-                "Console messages (level >= {:?}):\n\n{}",
-                input.level, note
-            ));
-        }
+        // Read messages from buffer
+        let buffer = console_buffer.read().await;
+        let browser_level = input.level.to_browser_level();
+        let messages = buffer.get_messages(browser_level);
 
         // Format the output
         let level_str = match input.level {
@@ -127,10 +121,30 @@ impl Tool for BrowserConsoleMessagesTool {
             ConsoleLevel::Debug => "debug",
         };
 
+        if messages.is_empty() {
+            return Ok(format!(
+                "Console messages (level >= {level_str}):\n\nNo messages captured."
+            ));
+        }
+
+        // Format messages as JSON array for structured output
+        let messages_json: Vec<_> = messages
+            .iter()
+            .map(|m| {
+                json!({
+                    "type": m.message_type.to_string(),
+                    "text": m.text,
+                    "timestamp": m.timestamp,
+                    "url": m.url,
+                    "lineNumber": m.line_number,
+                })
+            })
+            .collect();
+
         Ok(format!(
             "Console messages (level >= {}):\n\n{}",
             level_str,
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "No messages".to_string())
+            serde_json::to_string_pretty(&messages_json).unwrap_or_else(|_| "[]".to_string())
         ))
     }
 }

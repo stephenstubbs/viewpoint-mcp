@@ -2623,9 +2623,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "viewpoint-cdp"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47bf051724f87e66bb7d4c7d00cf4a90670d894aff91960013870996b86f356c"
+checksum = "4904ac330f01064bee0f176fc1dbb8ba4741441a468484708a315e04f90b5efb"
 dependencies = [
  "futures-util",
  "reqwest",
@@ -2640,9 +2640,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-core"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8723e6b01e3993ea76ca43dca062294978fda68238d11ead0d9ab1d37cb5ce48"
+checksum = "951a5855d85ed9ca18312a767d59023e924531846cbd786ecdc00d0990c5d4a0"
 dependencies = [
  "base64",
  "bytes",
@@ -2668,9 +2668,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71b1a3bcd891d1b698549bf402bb42a2ffcd7ed6d9f3062de88c0abc24340600"
+checksum = "75f4378faea84b62d7c0eef57c7d711856ecb14afc636fd2c603c63cde6eec75"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2683,9 +2683,9 @@ dependencies = [
 
 [[package]]
 name = "viewpoint-js-core"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "114ed95df3ba686883a8b6b0a9301c619f5471a7447979f618746c3d381579be"
+checksum = "86376b8f55aa48c373761e9100739b2110e9fe19cd03d3d5b5877b611a741639"
 
 [[package]]
 name = "viewpoint-mcp"
@@ -2709,6 +2709,7 @@ dependencies = [
  "tracing-subscriber",
  "viewpoint-cdp",
  "viewpoint-core",
+ "viewpoint-js",
 ]
 
 [[package]]

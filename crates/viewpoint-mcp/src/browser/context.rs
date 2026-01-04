@@ -6,6 +6,7 @@ use viewpoint_core::error::{ContextError, PageError};
 use viewpoint_core::{BrowserContext, Page};
 
 use super::config::ProxyConfig;
+use super::console::{SharedConsoleBuffer, StoredConsoleMessage, new_shared_buffer};
 use crate::snapshot::AccessibilitySnapshot;
 
 /// State for a browser context
@@ -29,6 +30,9 @@ pub struct ContextState {
 
     /// Pages in this context
     pages: Vec<Page>,
+
+    /// Console message buffers per page (indexed same as pages)
+    console_buffers: Vec<SharedConsoleBuffer>,
 
     /// Cached snapshot for the active page
     cached_snapshot: Option<CachedSnapshot>,
@@ -79,6 +83,10 @@ impl ContextState {
         // Create initial page
         let page = context.new_page().await?;
 
+        // Set up console message capture for the initial page
+        let console_buffer = new_shared_buffer();
+        Self::setup_console_handler(&page, console_buffer.clone()).await;
+
         Ok(Self {
             name,
             active_page: 0,
@@ -86,8 +94,22 @@ impl ContextState {
             proxy: None,
             context,
             pages: vec![page],
+            console_buffers: vec![console_buffer],
             cached_snapshot: None,
         })
+    }
+
+    /// Set up console message handler for a page.
+    async fn setup_console_handler(page: &Page, buffer: SharedConsoleBuffer) {
+        let buffer_clone = buffer.clone();
+        page.on_console(move |msg| {
+            let buffer = buffer_clone.clone();
+            async move {
+                let stored = StoredConsoleMessage::from_viewpoint(&msg);
+                buffer.write().await.push(stored);
+            }
+        })
+        .await;
     }
 
     /// Create a new context state with proxy
@@ -124,7 +146,13 @@ impl ContextState {
     /// Create a new page in this context
     pub async fn new_page(&mut self) -> Result<&Page, ContextError> {
         let page = self.context.new_page().await?;
+
+        // Set up console message capture for the new page
+        let console_buffer = new_shared_buffer();
+        Self::setup_console_handler(&page, console_buffer.clone()).await;
+
         self.pages.push(page);
+        self.console_buffers.push(console_buffer);
         self.active_page = self.pages.len() - 1;
         Ok(self.pages.last().unwrap())
     }
@@ -137,6 +165,11 @@ impl ContextState {
 
         let mut page = self.pages.remove(index);
         page.close().await?;
+
+        // Remove corresponding console buffer
+        if index < self.console_buffers.len() {
+            self.console_buffers.remove(index);
+        }
 
         // Adjust active page index
         if self.active_page >= self.pages.len() && !self.pages.is_empty() {
@@ -218,5 +251,11 @@ impl ContextState {
     /// Call this after navigation or any action that modifies the page
     pub fn invalidate_cache(&mut self) {
         self.cached_snapshot = None;
+    }
+
+    /// Get the console buffer for the active page.
+    #[must_use]
+    pub fn active_console_buffer(&self) -> Option<&SharedConsoleBuffer> {
+        self.console_buffers.get(self.active_page)
     }
 }

@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use viewpoint_js::js;
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -116,16 +117,17 @@ impl Tool for BrowserEvaluateTool {
                 ToolError::ElementNotFound(format!("Element ref '{element_ref_str}': {e}"))
             })?;
 
-            // Use native ref resolution API from viewpoint 0.2.9
+            // Use native ref resolution API from viewpoint
             let locator = page.locator_from_ref(element_ref_str);
 
-            // Evaluate with element - wrap the function to receive the element
-            let wrapped_js = format!(
-                "async (element) => {{ return ({})(element); }}",
-                input.function
-            );
+            // Evaluate with element - the viewpoint API expects expressions using `element`
+            // User provides a function like `(el) => el.textContent`, we need to convert it
+            // to an expression: `((el) => el.textContent)(element)`
+            // Using js! macro with @{} raw interpolation for the user's function
+            let user_fn = &input.function;
+            let expression = js! { (@{user_fn})(element) };
 
-            locator.evaluate(&wrapped_js).await.map_err(|e| {
+            locator.evaluate(&expression).await.map_err(|e| {
                 ToolError::ExecutionFailed(format!("JavaScript evaluation failed: {e}"))
             })?
         } else {

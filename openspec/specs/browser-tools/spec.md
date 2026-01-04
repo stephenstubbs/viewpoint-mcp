@@ -128,8 +128,8 @@ The system SHALL provide tools for inspecting page state.
 - **AND** returned as base64-encoded image data
 
 #### Scenario: Screenshot element
-- **WHEN** `browser_take_screenshot` is called with `ref: "e1a2b3"`
-- **THEN** the system calls `page.locator_from_ref("e1a2b3")`
+- **WHEN** `browser_take_screenshot` is called with `ref: "c0p0f0e1"`
+- **THEN** the system calls `page.locator_from_ref("c0p0f0e1")`
 - **AND** only the resolved element is captured
 
 #### Scenario: Full page screenshot
@@ -138,7 +138,20 @@ The system SHALL provide tools for inspecting page state.
 
 #### Scenario: Get console messages
 - **WHEN** `browser_console_messages` is called
-- **THEN** console messages are returned filtered by level
+- **THEN** console messages captured since page load are returned
+- **AND** messages are filtered by the specified level
+
+#### Scenario: Console messages include all levels
+- **WHEN** `browser_console_messages` is called with `level: "debug"`
+- **THEN** messages from console.log, console.info, console.warn, console.error, and console.debug are returned
+
+#### Scenario: Console messages filtered by level
+- **WHEN** `browser_console_messages` is called with `level: "error"`
+- **THEN** only console.error messages are returned
+
+#### Scenario: Console message buffer limit
+- **WHEN** more than 1000 console messages are logged
+- **THEN** the oldest messages are evicted to maintain the 1000 message limit
 
 #### Scenario: Get network requests
 - **WHEN** `browser_network_requests` is called
@@ -152,9 +165,25 @@ The system SHALL allow executing JavaScript in the page context.
 - **THEN** the expression is evaluated and result returned
 
 #### Scenario: Evaluate on element
-- **WHEN** `browser_evaluate` is called with `ref: "e1a2b3"` and `function: "(el) => el.textContent"`
-- **THEN** the system calls `page.locator_from_ref("e1a2b3")`
+- **WHEN** `browser_evaluate` is called with `ref: "c0p0f0e1"` and `function: "(el) => el.textContent"`
+- **THEN** the system calls `page.locator_from_ref("c0p0f0e1")`
 - **AND** the function is evaluated with the resolved element
+- **AND** the result is properly serialized and returned
+
+#### Scenario: Evaluate on element returns object
+- **WHEN** `browser_evaluate` is called with `ref: "c0p0f0e1"` and `function: "(el) => ({ tag: el.tagName, id: el.id })"`
+- **THEN** the function is evaluated with the element
+- **AND** the object result is properly serialized as JSON
+
+#### Scenario: Evaluate on element returns string
+- **WHEN** `browser_evaluate` is called with `ref: "c0p0f0e1"` and `function: "(el) => el.textContent"`
+- **THEN** the function is evaluated with the element
+- **AND** the string result is returned directly
+
+#### Scenario: Evaluate on element returns null
+- **WHEN** `browser_evaluate` is called with `ref: "c0p0f0e1"` and `function: "(el) => el.getAttribute('nonexistent')"`
+- **THEN** the function is evaluated with the element
+- **AND** null is returned and properly formatted
 
 ### Requirement: Wait Conditions
 The system SHALL support waiting for various conditions.
@@ -318,6 +347,14 @@ The system SHALL provide tools for managing multiple isolated browser contexts.
 
 #### Scenario: Save context storage state
 - **WHEN** `browser_context_save_storage` is called with `name: "logged_in"` and `path: "/path/to/save.json"`
-- **THEN** the system returns an error indicating storage state export is not yet available
-- **Note**: Full implementation pending viewpoint-core storage state export API
+- **THEN** cookies and localStorage are collected from the context
+- **AND** the storage state is saved to the specified file path
+- **AND** the response confirms successful save
+
+#### Scenario: Save storage state handles page session errors
+- **WHEN** `browser_context_save_storage` is called
+- **AND** some pages have stale or invalid sessions
+- **THEN** the system skips pages with invalid sessions
+- **AND** collects storage from valid pages
+- **AND** returns success with partial data (or appropriate error if no valid pages)
 

@@ -42,6 +42,7 @@ base64 = "0.22"
 # Browser automation
 viewpoint-core = { workspace = true }
 viewpoint-cdp = { workspace = true }
+viewpoint-js = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
