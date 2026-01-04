@@ -106,11 +106,13 @@ impl BrowserTabsTool {
             .active_context()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context
-            .page_count()
+        let pages = context
+            .pages()
             .await
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
-        let active_index = context.active_page_index();
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get pages: {e}")))?;
+
+        let page_count = pages.len();
+        let active_index = context.active_page_index().await;
 
         if page_count == 0 {
             return Ok("No tabs open".to_string());
@@ -118,10 +120,10 @@ impl BrowserTabsTool {
 
         let mut result = format!("Tabs ({page_count} total):\n");
 
-        for i in 0..page_count {
+        for (i, page) in pages.iter().enumerate() {
             let marker = if i == active_index { " [active]" } else { "" };
-            // In a full implementation, we'd get the actual URL/title of each page
-            let _ = writeln!(result, "  {i}: Tab {i}{marker}");
+            let url = page.url().await.unwrap_or_else(|_| "unknown".to_string());
+            let _ = writeln!(result, "  {i}: {url}{marker}");
         }
 
         Ok(result.trim_end().to_string())
@@ -137,7 +139,7 @@ impl BrowserTabsTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create new tab: {e}")))?;
 
-        let new_index = context.active_page_index();
+        let new_index = context.active_page_index().await;
         let page_count = context
             .page_count()
             .await
@@ -166,7 +168,10 @@ impl BrowserTabsTool {
             ));
         }
 
-        let target_index = index.unwrap_or_else(|| context.active_page_index());
+        let target_index = match index {
+            Some(i) => i,
+            None => context.active_page_index().await,
+        };
 
         if target_index >= page_count {
             return Err(ToolError::InvalidParams(format!(

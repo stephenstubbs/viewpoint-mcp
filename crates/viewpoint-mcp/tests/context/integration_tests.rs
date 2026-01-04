@@ -43,9 +43,9 @@ async fn test_parallel_context_different_urls() {
 
         let ctx = browser.active_context().unwrap();
         assert!(
-            ctx.current_url
-                .as_ref()
-                .map(|u| u.contains(user))
+            ctx.current_url()
+                .await
+                .map(|u: String| u.contains(user))
                 .unwrap_or(false)
         );
     }

@@ -70,8 +70,10 @@ impl Tool for BrowserCloseTool {
             .page_count()
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
-        let active_page_index = context.active_page_index();
-        let current_url = context.current_url.clone();
+        let active_page_index = context.active_page_index().await;
+
+        // Get the actual URL from the page we're about to close
+        let current_url = context.get_current_url().await;
 
         if page_count == 0 {
             return Err(ToolError::BrowserNotAvailable(

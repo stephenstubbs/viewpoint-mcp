@@ -96,7 +96,7 @@ impl Tool for BrowserNavigateTool {
             .map_err(|e| ToolError::ExecutionFailed(format!("Navigation failed: {e}")))?;
 
         // Update context's current URL
-        context.current_url = Some(input.url.clone());
+        context.set_current_url(Some(input.url.clone())).await;
 
         // Invalidate cache after navigation
         context.invalidate_cache();

@@ -87,9 +87,9 @@ async fn test_context_switch_preserves_state() {
     // Context A should still have its URL
     let ctx = browser.active_context().unwrap();
     assert!(
-        ctx.current_url
-            .as_ref()
-            .map(|u| u.contains("Context A"))
+        ctx.current_url()
+            .await
+            .map(|u: String| u.contains("Context A"))
             .unwrap_or(false)
     );
 

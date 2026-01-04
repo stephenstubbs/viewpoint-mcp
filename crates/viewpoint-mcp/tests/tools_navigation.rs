@@ -121,7 +121,7 @@ async fn test_navigate_updates_context_url() {
     let _ = tool.execute(&json!({ "url": url }), &mut browser).await;
 
     let context = browser.active_context().unwrap();
-    assert_eq!(context.current_url, Some(url.to_string()));
+    assert_eq!(context.current_url().await, Some(url.to_string()));
 
     browser.shutdown().await;
 }

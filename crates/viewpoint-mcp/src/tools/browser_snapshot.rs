@@ -98,7 +98,7 @@ impl Tool for BrowserSnapshotTool {
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        if let Some(cached) = context.get_cached_snapshot(input.all_refs) {
+        if let Some(cached) = context.get_cached_snapshot(input.all_refs).await {
             debug!("snapshot cache hit");
 
             // Use single-pass counting
@@ -167,7 +167,7 @@ impl Tool for BrowserSnapshotTool {
         let context = browser
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
-        context.cache_snapshot(snapshot, input.all_refs);
+        context.cache_snapshot(snapshot, input.all_refs).await;
 
         Ok(result)
     }

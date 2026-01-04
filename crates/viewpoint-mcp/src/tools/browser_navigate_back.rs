@@ -76,7 +76,7 @@ impl Tool for BrowserNavigateBackTool {
         context.invalidate_cache();
 
         if let Some(url) = url {
-            context.current_url = Some(url.clone());
+            context.set_current_url(Some(url.clone())).await;
             Ok(format!("Navigated back to {url}"))
         } else {
             Ok("Navigated back".to_string())
