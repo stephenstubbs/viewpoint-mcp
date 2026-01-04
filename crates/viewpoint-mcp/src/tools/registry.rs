@@ -1,11 +1,38 @@
 //! Tool registry for managing available tools
+//!
+//! The registry tracks all registered tools and their capability requirements,
+//! providing filtered access based on enabled capabilities.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::traits::{Capability, Tool};
 
-/// Registry of available MCP tools
+/// Registry of available MCP tools.
+///
+/// The registry stores tool implementations and tracks which capabilities
+/// are enabled. Tools requiring disabled capabilities are hidden from
+/// listing and lookup.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::tools::{ToolRegistry, Capability, register_all_tools};
+///
+/// // Create registry with vision capability enabled
+/// let mut registry = ToolRegistry::with_capabilities([Capability::Vision]);
+/// register_all_tools(&mut registry);
+///
+/// // Only tools available with current capabilities are listed
+/// let tools = registry.list();
+/// assert!(tools.iter().any(|t| t.name() == "browser_mouse_click_xy"));
+///
+/// // Without vision capability, mouse tools are hidden
+/// let mut registry = ToolRegistry::new();
+/// register_all_tools(&mut registry);
+/// let tools = registry.list();
+/// assert!(!tools.iter().any(|t| t.name() == "browser_mouse_click_xy"));
+/// ```
 pub struct ToolRegistry {
     tools: HashMap<String, Arc<dyn Tool>>,
     enabled_capabilities: HashSet<Capability>,

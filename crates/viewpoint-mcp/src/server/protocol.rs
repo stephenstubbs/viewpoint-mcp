@@ -1,4 +1,14 @@
 //! MCP protocol implementation
+//!
+//! This module implements the Model Context Protocol (MCP) for browser automation.
+//! It provides JSON-RPC request/response handling and tool dispatch.
+//!
+//! # Protocol Flow
+//!
+//! 1. Client sends `initialize` request
+//! 2. Server responds with capabilities
+//! 3. Client sends `initialized` notification
+//! 4. Client can now call `tools/list` and `tools/call`
 
 use std::sync::Arc;
 
@@ -184,7 +194,25 @@ pub struct ToolCallResult {
     pub is_error: bool,
 }
 
-/// MCP Server
+/// MCP Server for browser automation.
+///
+/// The server manages browser state and dispatches tool calls from MCP clients.
+/// It supports the MCP protocol with JSON-RPC over stdio or HTTP transports.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use viewpoint_mcp::{McpServer, ServerConfig};
+/// use viewpoint_mcp::transport::StdioTransport;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), viewpoint_mcp::transport::TransportError> {
+///     let server = McpServer::new(ServerConfig::default());
+///     let transport = StdioTransport::new(server);
+///     transport.run().await?;
+///     Ok(())
+/// }
+/// ```
 pub struct McpServer {
     /// Server configuration
     config: ServerConfig,

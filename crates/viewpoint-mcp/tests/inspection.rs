@@ -8,8 +8,11 @@
 
 mod inspection {
     pub mod console_network_tests;
+    pub mod evaluate_tests;
     pub mod screenshot_tests;
-    pub mod snapshot_tests;
+    pub mod snapshot_basic_tests;
+    pub mod snapshot_cache_tests;
+    pub mod wait_tests;
 
     use viewpoint_mcp::browser::{BrowserConfig, BrowserState};
 

@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use viewpoint_js::js;
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -83,39 +84,39 @@ impl Tool for BrowserNetworkRequestsTool {
         // Use JavaScript to retrieve network requests via Performance API
         // This gives us the resource timing entries
         let include_static = input.include_static;
-        let js_code = format!(
-            r"(() => {{
-            const entries = performance.getEntriesByType('resource');
-            const staticTypes = ['img', 'font', 'stylesheet', 'script'];
-            
-            const requests = entries.map(entry => {{
-                let resourceType = 'other';
-                if (entry.initiatorType) {{
-                    resourceType = entry.initiatorType;
-                }}
-                
-                return {{
-                    url: entry.name,
-                    type: resourceType,
-                    duration: Math.round(entry.duration),
-                    size: entry.transferSize || 0,
-                    status: entry.responseStatus || null
-                }};
-            }});
-            
-            const includeStatic = {include_static};
-            if (includeStatic) {{
-                return requests;
-            }}
-            
-            // Filter out successful static resources
-            return requests.filter(r => {{
-                const isStatic = staticTypes.includes(r.type);
-                const isSuccess = r.status === null || (r.status >= 200 && r.status < 400);
-                return !(isStatic && isSuccess);
-            }});
-        }})()"
-        );
+        let js_code = js! {
+            (() => {
+                const entries = performance.getEntriesByType("resource");
+                const staticTypes = ["img", "font", "stylesheet", "script"];
+
+                const requests = entries.map(entry => {
+                    let resourceType = "other";
+                    if (entry.initiatorType) {
+                        resourceType = entry.initiatorType;
+                    }
+
+                    return {
+                        url: entry.name,
+                        type: resourceType,
+                        duration: Math.round(entry.duration),
+                        size: entry.transferSize || 0,
+                        status: entry.responseStatus || null
+                    };
+                });
+
+                const includeStatic = #{include_static};
+                if (includeStatic) {
+                    return requests;
+                }
+
+                // Filter out successful static resources
+                return requests.filter(r => {
+                    const isStatic = staticTypes.includes(r.type);
+                    const isSuccess = r.status === null || (r.status >= 200 && r.status < 400);
+                    return !(isStatic && isSuccess);
+                });
+            })()
+        };
 
         let result: serde_json::Value = page.evaluate(&js_code).await.map_err(|e| {
             ToolError::ExecutionFailed(format!("Failed to get network requests: {e}"))

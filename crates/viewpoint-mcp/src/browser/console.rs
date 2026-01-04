@@ -33,39 +33,56 @@ impl ConsoleLevel {
     /// Each level includes itself and all more severe levels.
     pub fn includes(&self, msg_type: &StoredConsoleMessageType) -> bool {
         let msg_level = match msg_type {
-            StoredConsoleMessageType::Debug => ConsoleLevel::Debug,
-            StoredConsoleMessageType::Log | StoredConsoleMessageType::Info => ConsoleLevel::Info,
-            StoredConsoleMessageType::Warning => ConsoleLevel::Warning,
-            StoredConsoleMessageType::Error | StoredConsoleMessageType::Assert => {
-                ConsoleLevel::Error
-            }
-            // Other types are treated as info level
-            _ => ConsoleLevel::Info,
+            StoredConsoleMessageType::Debug => Self::Debug,
+            StoredConsoleMessageType::Warning => Self::Warning,
+            StoredConsoleMessageType::Error | StoredConsoleMessageType::Assert => Self::Error,
+            // Log, Info, and other types are treated as info level
+            _ => Self::Info,
         };
         msg_level >= *self
     }
 }
 
 /// Stored console message type (serializable version).
+///
+/// Maps JavaScript console API methods to their corresponding message types.
+/// Each variant represents a specific console method call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StoredConsoleMessageType {
+    /// Standard `console.log()` output.
     Log,
+    /// Debug-level output from `console.debug()`.
     Debug,
+    /// Informational output from `console.info()`.
     Info,
+    /// Error output from `console.error()`.
     Error,
+    /// Warning output from `console.warn()`.
     Warning,
+    /// Object inspection from `console.dir()`.
     Dir,
+    /// XML/HTML inspection from `console.dirxml()`.
     DirXml,
+    /// Tabular data from `console.table()`.
     Table,
+    /// Stack trace from `console.trace()`.
     Trace,
+    /// Console clear from `console.clear()`.
     Clear,
+    /// Counter output from `console.count()`.
     Count,
+    /// Assertion failure from `console.assert()`.
     Assert,
+    /// Profiler start from `console.profile()`.
     Profile,
+    /// Profiler end from `console.profileEnd()`.
     ProfileEnd,
+    /// Group start from `console.group()` or `console.groupCollapsed()`.
     StartGroup,
+    /// Group end from `console.groupEnd()`.
     EndGroup,
+    /// Timer end from `console.timeEnd()`.
     TimeEnd,
 }
 

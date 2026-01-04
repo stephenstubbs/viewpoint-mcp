@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::time::Duration;
+use viewpoint_js::js;
 
 use super::{Tool, ToolError, ToolResult};
 use crate::browser::BrowserState;
@@ -133,10 +134,8 @@ impl Tool for BrowserWaitForTool {
 
         // Handle text appearance wait using wait_for_function
         if let Some(ref text) = input.text {
-            // Escape the text for use in JavaScript
-            let escaped_text = text.replace('\\', "\\\\").replace('"', "\\\"");
-            let js_condition =
-                format!(r#"() => document.body.innerText.includes("{escaped_text}")"#);
+            // Use js! macro for compile-time JavaScript validation and proper string escaping
+            let js_condition = js! { () => document.body.innerText.includes(#{text}) };
 
             page.wait_for_function(&js_condition)
                 .wait()
@@ -153,10 +152,8 @@ impl Tool for BrowserWaitForTool {
 
         // Handle text disappearance wait using wait_for_function
         if let Some(ref text) = input.text_gone {
-            // Escape the text for use in JavaScript
-            let escaped_text = text.replace('\\', "\\\\").replace('"', "\\\"");
-            let js_condition =
-                format!(r#"() => !document.body.innerText.includes("{escaped_text}")"#);
+            // Use js! macro for compile-time JavaScript validation and proper string escaping
+            let js_condition = js! { () => !document.body.innerText.includes(#{text}) };
 
             page.wait_for_function(&js_condition)
                 .wait()

@@ -81,6 +81,51 @@ viewpoint-mcp --port 8080 --api-key your-secret-key
 | `--api-key <KEY>` | API key for SSE authentication |
 | `--caps <CAPS>` | Enable capabilities: `vision`, `pdf` (comma-separated) |
 
+## Library Usage
+
+The MCP server can also be used as a library in your Rust projects:
+
+```rust
+use viewpoint_mcp::{McpServer, ServerConfig};
+use viewpoint_mcp::transport::StdioTransport;
+use viewpoint_mcp::browser::{BrowserConfig, ViewportSize};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Configure the server
+    let config = ServerConfig {
+        browser: BrowserConfig {
+            headless: true,
+            viewport: Some(ViewportSize::new(1920, 1080)),
+            ..Default::default()
+        },
+        capabilities: vec!["vision".to_string()],
+        ..Default::default()
+    };
+
+    // Create and run the server
+    let server = McpServer::new(config);
+    let transport = StdioTransport::new(server);
+    transport.run().await?;
+
+    Ok(())
+}
+```
+
+For SSE transport:
+
+```rust
+use viewpoint_mcp::{McpServer, ServerConfig};
+use viewpoint_mcp::transport::{SseTransport, SseConfig};
+
+let server = McpServer::new(ServerConfig::default());
+let config = SseConfig::new(8080);
+let transport = SseTransport::new(server, config);
+transport.run().await?;
+```
+
+See the [library crate documentation](crates/viewpoint-mcp/README.md) for more details.
+
 ## OpenCode Setup
 
 Add viewpoint-mcp to your OpenCode configuration in `opencode.json`:
@@ -160,6 +205,27 @@ Once configured, the browser tools (prefixed with `browser_`) will be available 
 
 ### PDF (requires `--caps pdf`)
 - `browser_pdf_save` - Save page as PDF
+
+## Architecture
+
+```
+viewpoint-mcp/
+├── crates/
+│   ├── viewpoint-mcp/       # Core library
+│   │   ├── browser/         # Browser state management
+│   │   ├── server/          # MCP protocol implementation
+│   │   ├── snapshot/        # Accessibility tree capture
+│   │   ├── tools/           # 30 browser automation tools
+│   │   └── transport/       # stdio and SSE transports
+│   └── viewpoint-mcp-cli/   # CLI binary
+```
+
+### Key Components
+
+- **Browser State**: Lazy initialization, multi-context support, connection recovery
+- **Accessibility Snapshots**: Semantic page representation with element references
+- **Tool Registry**: Capability-aware tool management
+- **Transport Layer**: stdio for CLI clients, SSE for HTTP clients
 
 ## Platform Support
 

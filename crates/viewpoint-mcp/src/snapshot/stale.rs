@@ -1,4 +1,7 @@
 //! Stale reference detection and recovery guidance
+//!
+//! Detects when element references become invalid due to page changes
+//! and provides helpful error messages with recovery suggestions.
 
 use std::collections::HashMap;
 
@@ -109,7 +112,22 @@ pub struct StoredElementInfo {
     pub description: String,
 }
 
-/// Detector for stale references
+/// Detector for stale references.
+///
+/// Tracks snapshot history to detect when element references become
+/// invalid due to page navigation or DOM changes.
+///
+/// # How It Works
+///
+/// The detector maintains two snapshots: previous and current.
+/// When validating a reference, it checks:
+///
+/// 1. Does the element exist in the current snapshot?
+/// 2. Has the element's role changed significantly?
+/// 3. Has the element's name changed?
+///
+/// Based on these checks, it returns appropriate error types with
+/// recovery suggestions.
 #[derive(Debug, Default)]
 pub struct StaleRefDetector {
     /// Previous snapshot (for comparison)

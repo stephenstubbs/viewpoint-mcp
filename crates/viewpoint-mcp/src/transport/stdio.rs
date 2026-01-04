@@ -1,6 +1,7 @@
 //! Stdio transport implementation
 //!
 //! Reads JSON-RPC requests from stdin and writes responses to stdout.
+//! This is the default transport for CLI-based MCP clients.
 
 use std::sync::Arc;
 
@@ -9,7 +10,27 @@ use tokio::sync::Mutex;
 
 use crate::server::protocol::{JsonRpcRequest, JsonRpcResponse, McpServer};
 
-/// Stdio transport for MCP communication
+/// Stdio transport for MCP communication.
+///
+/// Implements the MCP transport protocol over stdin/stdout, suitable
+/// for integration with CLI-based MCP clients like Claude Code.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use viewpoint_mcp::{McpServer, ServerConfig};
+/// use viewpoint_mcp::transport::StdioTransport;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), viewpoint_mcp::transport::TransportError> {
+///     let server = McpServer::new(ServerConfig::default());
+///     let transport = StdioTransport::new(server);
+///
+///     // Run until stdin closes
+///     transport.run().await?;
+///     Ok(())
+/// }
+/// ```
 pub struct StdioTransport {
     server: Arc<Mutex<McpServer>>,
 }

@@ -141,7 +141,7 @@ impl BrowserFileUploadTool {
     /// 1. Standard visible file input: `input[type=file]`
     /// 2. Hidden file input (opacity/visibility): Still matched by type selector
     /// 3. Any input with accept attribute (common pattern)
-    async fn set_files_on_any_input<P: AsRef<std::path::Path>>(
+    async fn set_files_on_any_input<P: AsRef<std::path::Path> + Sync>(
         page: &viewpoint_core::Page,
         files: &[P],
     ) -> Result<(), String> {
@@ -168,9 +168,8 @@ impl BrowserFileUploadTool {
 
         // Try to find input by accept attribute (common for hidden file inputs)
         let locator_with_accept = page.locator("input[accept]");
-        match locator_with_accept.set_input_files(files).await {
-            Ok(()) => return Ok(()),
-            Err(_) => {}
+        if locator_with_accept.set_input_files(files).await.is_ok() {
+            return Ok(());
         }
 
         // If all strategies failed, provide a helpful error message

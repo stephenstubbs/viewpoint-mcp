@@ -2,7 +2,39 @@
 
 use std::path::PathBuf;
 
-/// Browser configuration
+/// Browser configuration for the MCP server.
+///
+/// Controls how the browser is launched and configured. By default,
+/// a headed Chromium browser is launched with a standard viewport.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::browser::{BrowserConfig, BrowserType, ViewportSize};
+/// use std::path::PathBuf;
+///
+/// // Default configuration (headed Chromium)
+/// let config = BrowserConfig::default();
+///
+/// // Headless browser with custom viewport
+/// let config = BrowserConfig {
+///     headless: true,
+///     viewport: Some(ViewportSize::new(1920, 1080)),
+///     ..Default::default()
+/// };
+///
+/// // Connect to existing browser via CDP
+/// let config = BrowserConfig {
+///     cdp_endpoint: Some("http://localhost:9222".to_string()),
+///     ..Default::default()
+/// };
+///
+/// // Persistent browser profile
+/// let config = BrowserConfig {
+///     user_data_dir: Some(PathBuf::from("/tmp/browser-profile")),
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct BrowserConfig {
     /// Run browser in headless mode
@@ -34,7 +66,21 @@ pub enum BrowserType {
     Chrome,
 }
 
-/// Viewport size configuration
+/// Viewport size configuration.
+///
+/// Defines the browser viewport dimensions in pixels.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::browser::ViewportSize;
+///
+/// // Create a 1280x720 viewport
+/// let viewport = ViewportSize::new(1280, 720);
+///
+/// // Parse from string format "WxH"
+/// let viewport = ViewportSize::parse("1920x1080").unwrap();
+/// ```
 #[derive(Debug, Clone)]
 pub struct ViewportSize {
     /// Width in pixels
@@ -72,7 +118,27 @@ impl ViewportSize {
     }
 }
 
-/// Proxy configuration for browser contexts
+/// Proxy configuration for browser contexts.
+///
+/// Enables routing browser traffic through a proxy server.
+/// Supports HTTP, HTTPS, and SOCKS5 proxies.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::browser::ProxyConfig;
+///
+/// // Simple SOCKS5 proxy
+/// let proxy = ProxyConfig::new("socks5://proxy.example.com:1080");
+///
+/// // Proxy with authentication
+/// let proxy = ProxyConfig::new("http://proxy.example.com:8080")
+///     .with_auth("username", "password");
+///
+/// // Proxy with bypass list
+/// let proxy = ProxyConfig::new("http://proxy.example.com:8080")
+///     .with_bypass("localhost,*.internal.com");
+/// ```
 #[derive(Debug, Clone)]
 pub struct ProxyConfig {
     /// Proxy server URL (e.g., `socks5://proxy:1080`)

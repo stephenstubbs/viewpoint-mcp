@@ -43,12 +43,14 @@ tokio-stream = "0.1"
 hex = "0.4"
 
 # Browser automation
-viewpoint-core = "0.4.1"
-viewpoint-cdp = "0.4.1"
-viewpoint-js = "0.4.1"
+viewpoint-core = "0.4.2"
+viewpoint-cdp = "0.4.2"
+viewpoint-js = "0.4.2"
+viewpoint-js-core = "0.4.2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

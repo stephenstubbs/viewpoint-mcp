@@ -1,4 +1,6 @@
 //! Browser state management
+//!
+//! Manages the browser lifecycle and multi-context state across MCP tool calls.
 
 use std::collections::HashMap;
 
@@ -12,10 +14,26 @@ use super::error::BrowserError;
 /// Default context name
 pub const DEFAULT_CONTEXT: &str = "default";
 
-/// Browser state manager
+/// Browser state manager.
 ///
 /// Maintains a single browser instance with multiple named contexts.
 /// Tools operate on the active context's active page.
+///
+/// # Lazy Initialization
+///
+/// The browser is not launched until the first tool call. This allows
+/// the server to start quickly and only initialize when needed.
+///
+/// # Multi-Context Support
+///
+/// Each context is isolated with its own cookies, storage, and cache.
+/// Use [`BrowserState::create_context`] to create additional contexts
+/// for parallel operations or testing different user sessions.
+///
+/// # Connection Recovery
+///
+/// If the browser connection is lost (crash, timeout), the state
+/// automatically resets to allow re-initialization on the next tool call.
 pub struct BrowserState {
     /// Browser configuration
     config: BrowserConfig,

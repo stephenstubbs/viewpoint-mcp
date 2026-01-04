@@ -1,6 +1,7 @@
 //! SSE transport implementation
 //!
 //! HTTP server with Server-Sent Events for MCP communication.
+//! Suitable for web-based MCP clients that can't use stdio.
 
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -18,7 +19,20 @@ use tokio_stream::wrappers::ReceiverStream;
 use super::error::TransportError;
 use crate::server::protocol::{JsonRpcRequest, JsonRpcResponse, McpServer};
 
-/// SSE transport configuration
+/// SSE transport configuration.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::transport::SseConfig;
+///
+/// // Auto-generated API key
+/// let config = SseConfig::new(8080);
+/// println!("Use API key: {}", config.api_key);
+///
+/// // Custom API key
+/// let config = SseConfig::with_api_key(8080, "my-secret-key");
+/// ```
 #[derive(Debug, Clone)]
 pub struct SseConfig {
     /// Port to listen on
@@ -61,7 +75,33 @@ struct AppState {
     api_key: String,
 }
 
-/// SSE transport for MCP communication
+/// SSE transport for MCP communication.
+///
+/// Runs an HTTP server with endpoints for MCP communication:
+/// - `GET /mcp` - SSE connection for server-initiated messages
+/// - `POST /mcp` - JSON-RPC requests
+///
+/// Authentication is via Bearer token in the Authorization header.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use viewpoint_mcp::{McpServer, ServerConfig};
+/// use viewpoint_mcp::transport::{SseTransport, SseConfig};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), viewpoint_mcp::transport::TransportError> {
+///     let server = McpServer::new(ServerConfig::default());
+///     let config = SseConfig::new(8080);
+///
+///     println!("API Key: {}", config.api_key);
+///     println!("Connect to http://localhost:8080/mcp");
+///
+///     let transport = SseTransport::new(server, config);
+///     transport.run().await?;
+///     Ok(())
+/// }
+/// ```
 pub struct SseTransport {
     config: SseConfig,
     server: Arc<Mutex<McpServer>>,

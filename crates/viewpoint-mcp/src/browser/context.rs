@@ -33,7 +33,7 @@ struct SharedPageState {
 /// State for a browser context
 ///
 /// Each context is isolated with its own cookies, storage, and cache.
-/// Pages are tracked by viewpoint-core; we only track console buffers keyed by target_id.
+/// Pages are tracked by viewpoint-core; we only track console buffers keyed by `target_id`.
 pub struct ContextState {
     /// Context name (unique identifier)
     pub name: String,
@@ -47,14 +47,14 @@ pub struct ContextState {
     /// Shared state that can be updated by event handlers
     shared_state: Arc<SharedPageState>,
 
-    /// Console message buffers per page, keyed by target_id.
+    /// Console message buffers per page, keyed by `target_id`.
     /// This allows tracking console for externally-opened pages.
     console_buffers: Arc<RwLock<HashMap<String, SharedConsoleBuffer>>>,
 
-    /// Handler ID for the on_page event subscription (kept alive)
+    /// Handler ID for the `on_page` event subscription (kept alive)
     _page_handler_id: HandlerId,
 
-    /// Handler ID for the on_page_activated event subscription (kept alive)
+    /// Handler ID for the `on_page_activated` event subscription (kept alive)
     _page_activated_handler_id: HandlerId,
 
     /// Cached snapshot for the active page
@@ -288,9 +288,8 @@ impl ContextState {
     /// Returns `true` if the switch was successful, `false` if the index is out of bounds.
     /// Also updates `current_url` to the new page's URL.
     pub async fn switch_page(&mut self, index: usize) -> bool {
-        let pages = match self.context.pages().await {
-            Ok(p) => p,
-            Err(_) => return false,
+        let Ok(pages) = self.context.pages().await else {
+            return false;
         };
 
         if index < pages.len() {
@@ -299,10 +298,10 @@ impl ContextState {
                 .store(index, Ordering::SeqCst);
 
             // Update current_url to the new active page's URL
-            if let Some(page) = pages.into_iter().nth(index) {
-                if let Ok(url) = page.url().await {
-                    *self.shared_state.current_url.write().await = Some(url);
-                }
+            if let Some(page) = pages.into_iter().nth(index)
+                && let Ok(url) = page.url().await
+            {
+                *self.shared_state.current_url.write().await = Some(url);
             }
 
             true
@@ -356,10 +355,10 @@ impl ContextState {
 
         // Check if URL changed
         let current_url = self.shared_state.current_url.read().await;
-        if let Some(url) = current_url.as_ref() {
-            if cache.url != *url {
-                return None;
-            }
+        if let Some(url) = current_url.as_ref()
+            && cache.url != *url
+        {
+            return None;
         }
 
         // Check if all_refs mode matches
@@ -444,7 +443,7 @@ impl ContextState {
     /// Sync the active page index from a pending activation event.
     ///
     /// If a page was activated via browser UI (not our API), we stored its
-    /// target_id and need to find its index in the pages list.
+    /// `target_id` and need to find its index in the pages list.
     async fn sync_active_page_index(&self) {
         // Check if there's a pending activated target_id
         let activated_target_id = {

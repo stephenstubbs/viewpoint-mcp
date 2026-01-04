@@ -1,8 +1,35 @@
 //! Snapshot element representation
+//!
+//! Provides the [`SnapshotElement`] type representing nodes in the accessibility tree.
 
 use super::reference::ElementRef;
 
-/// An element in the accessibility snapshot with reference information
+/// An element in the accessibility snapshot with reference information.
+///
+/// Each element represents a node in the page's accessibility tree, containing
+/// its ARIA role, accessible name, states, and optionally an element reference
+/// for interaction.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::snapshot::{SnapshotElement, ElementRef};
+///
+/// // Create a button element with a ref
+/// let button = SnapshotElement::new("button")
+///     .with_name("Submit")
+///     .with_ref(ElementRef::new("c0p0f0e1"));
+///
+/// assert_eq!(button.role, "button");
+/// assert_eq!(button.name, Some("Submit".to_string()));
+/// assert!(button.has_ref());
+///
+/// // Create a nested structure
+/// let form = SnapshotElement::new("form")
+///     .with_child(button);
+///
+/// assert_eq!(form.children.len(), 1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct SnapshotElement {
     /// The ARIA role of the element

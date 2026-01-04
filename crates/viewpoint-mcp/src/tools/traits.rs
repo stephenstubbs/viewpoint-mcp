@@ -1,4 +1,7 @@
 //! Tool trait definitions
+//!
+//! This module defines the core abstractions for MCP tools.
+//! Each tool implements the [`Tool`] trait to provide browser automation functionality.
 
 use ::async_trait::async_trait;
 use serde_json::Value;
@@ -9,7 +12,23 @@ use crate::browser::BrowserState;
 /// Result type for tool execution
 pub type ToolResult = Result<String, ToolError>;
 
-/// Capability flags that can be enabled via command-line arguments
+/// Capability flags that can be enabled via command-line arguments.
+///
+/// Some tools require explicit opt-in via capability flags. These flags
+/// are passed via the CLI `--caps` argument or `ServerConfig::capabilities`.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::tools::Capability;
+///
+/// // Parse from string
+/// let cap: Capability = "vision".parse().unwrap();
+/// assert_eq!(cap, Capability::Vision);
+///
+/// // Get string representation
+/// assert_eq!(Capability::Pdf.as_str(), "pdf");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Capability {
     /// Vision capability - enables coordinate-based mouse tools
@@ -41,13 +60,23 @@ impl std::str::FromStr for Capability {
     }
 }
 
-/// Tool trait for MCP tool implementations
+/// Tool trait for MCP tool implementations.
+///
+/// Each browser automation tool implements this trait. Tools receive
+/// JSON arguments and access to browser state, returning a string result.
+///
+/// # Implementation Notes
+///
+/// - Tools should validate input using [`serde_json::from_value`]
+/// - Browser initialization is lazy - call [`BrowserState::initialize`] first
+/// - Return [`ToolError`] variants for different failure modes
+/// - Override [`Tool::required_capability`] for optional tools
 #[async_trait]
 pub trait Tool: Send + Sync {
-    /// Get the tool name
+    /// Get the tool name (e.g., `browser_navigate`)
     fn name(&self) -> &'static str;
 
-    /// Get the tool description
+    /// Get the tool description for LLM context
     fn description(&self) -> &'static str;
 
     /// Get the JSON schema for tool input

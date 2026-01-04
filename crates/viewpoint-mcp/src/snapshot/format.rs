@@ -1,4 +1,6 @@
 //! Snapshot formatting for LLM consumption
+//!
+//! Converts accessibility snapshots into indented text format optimized for LLM understanding.
 
 use std::fmt::Write;
 use std::sync::LazyLock;
@@ -24,7 +26,28 @@ static INDENT_CACHE: LazyLock<Vec<String>> = LazyLock::new(|| {
         .collect()
 });
 
-/// Formatter for accessibility snapshots
+/// Formatter for accessibility snapshots.
+///
+/// Converts snapshot element trees into indented text representation
+/// suitable for LLM consumption. Supports compact mode for pages with
+/// many interactive elements.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::snapshot::{SnapshotFormatter, SnapshotElement};
+///
+/// let formatter = SnapshotFormatter::new()
+///     .with_all_refs(true)
+///     .with_compact_mode(false);
+///
+/// let root = SnapshotElement::new("document")
+///     .with_child(SnapshotElement::new("button").with_name("Click me"));
+///
+/// let output = formatter.format(&root);
+/// assert!(output.contains("button"));
+/// assert!(output.contains("Click me"));
+/// ```
 #[derive(Debug, Default)]
 pub struct SnapshotFormatter {
     /// Whether to show all refs (including Tier 2)
@@ -184,6 +207,7 @@ impl SnapshotFormatter {
 ///
 /// This function properly handles UTF-8 by truncating at character boundaries
 /// rather than byte boundaries, avoiding panics on multi-byte characters.
+#[allow(clippy::redundant_pub_crate)] // Used in unit tests
 pub(crate) fn truncate_text(text: &str, max_len: usize) -> String {
     if text.len() <= max_len {
         text.to_string()
@@ -195,8 +219,7 @@ pub(crate) fn truncate_text(text: &str, max_len: usize) -> String {
             .char_indices()
             .take_while(|(i, _)| *i < target_len)
             .last()
-            .map(|(i, c)| i + c.len_utf8())
-            .unwrap_or(0);
+            .map_or(0, |(i, c)| i + c.len_utf8());
 
         format!("{}...", &text[..truncate_at])
     }

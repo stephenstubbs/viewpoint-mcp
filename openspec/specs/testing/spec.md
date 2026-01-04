@@ -1,7 +1,7 @@
 # testing Specification
 
 ## Purpose
-TBD - created by archiving change fix-integration-test-loading. Update Purpose after archive.
+Define the test organization patterns and conventions for the viewpoint-mcp codebase, including integration test structure, module organization, and directory hygiene rules.
 ## Requirements
 ### Requirement: Integration Test Entry Points
 
@@ -13,6 +13,13 @@ Integration test subdirectories in `tests/` MUST have a corresponding entry poin
 - **THEN** a corresponding entry point file MUST exist (e.g., `tests/context.rs`)
 - **AND** the entry point file MUST declare the module (e.g., `mod context;`)
 - **AND** running `cargo test --features integration` MUST discover and run tests from the subdirectory
+
+#### Scenario: File size limits apply to tests
+
+- **WHEN** a test file exceeds 500 lines
+- **THEN** the file MUST be split into smaller, focused test modules
+- **AND** each new module SHOULD group related tests by functionality
+- **AND** a parent module MUST declare all sub-modules
 
 ### Requirement: No Inline Test Modules
 

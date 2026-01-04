@@ -1,6 +1,6 @@
 //! Element reference system for stable element identification
 //!
-//! This module provides the `ElementRef` type which wraps viewpoint-core's native
+//! This module provides the [`ElementRef`] type which wraps viewpoint-core's native
 //! element references.
 //!
 //! # Reference Format (viewpoint-core 0.3.1+)
@@ -12,11 +12,40 @@
 //! - `e{counter}` - Element counter within the snapshot
 //!
 //! Example: `c0p0f0e1`, `c0p0f1e3`, `c1p0f0e1`
+//!
+//! # Examples
+//!
+//! ```
+//! use viewpoint_mcp::snapshot::ElementRef;
+//!
+//! // Parse a reference from a snapshot
+//! let element_ref = ElementRef::parse("c0p0f0e1").unwrap();
+//! assert_eq!(element_ref.ref_string(), "c0p0f0e1");
+//!
+//! // Create a reference with context name for display
+//! let element_ref = ElementRef::with_context("c0p0f0e1", "my-context");
+//! assert_eq!(element_ref.context(), Some("my-context"));
+//! ```
 
 /// An element reference for targeting elements in tool calls.
 ///
 /// References use viewpoint-core's native format: `c{ctx}p{page}f{frame}e{counter}`
 /// which includes context, page, and frame scoping to prevent cross-context misuse.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::snapshot::ElementRef;
+///
+/// // Create from a ref string
+/// let element_ref = ElementRef::new("c0p0f0e5");
+///
+/// // Get the ref string for use with page.locator_from_ref()
+/// assert_eq!(element_ref.ref_string(), "c0p0f0e5");
+///
+/// // Display format
+/// assert_eq!(element_ref.to_string(), "c0p0f0e5");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ElementRef {
     /// The viewpoint-core ref string (e.g., "c0p0f0e1")

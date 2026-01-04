@@ -1,6 +1,29 @@
 //! Element classification for determining which elements receive refs
+//!
+//! Elements are classified into three tiers based on their interactivity:
+//!
+//! - **Tier 1**: Always interactive (buttons, links, inputs)
+//! - **Tier 2**: Contextually interactive (list items, options)
+//! - **Tier 3**: Non-interactive (headings, paragraphs, containers)
 
-/// Classification tier for accessibility elements
+/// Classification tier for accessibility elements.
+///
+/// Determines how elements are treated in the snapshot system.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::snapshot::{ElementTier, classify_role};
+///
+/// // Buttons are always interactive
+/// assert_eq!(classify_role("button"), ElementTier::AlwaysInteractive);
+///
+/// // List items are contextually interactive
+/// assert_eq!(classify_role("listitem"), ElementTier::ContextuallyInteractive);
+///
+/// // Headings are non-interactive
+/// assert_eq!(classify_role("heading"), ElementTier::NonInteractive);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ElementTier {
     /// Tier 1: Always interactive - always receive refs

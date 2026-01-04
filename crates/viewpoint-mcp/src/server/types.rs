@@ -2,7 +2,30 @@
 
 use crate::browser::BrowserConfig;
 
-/// MCP Server configuration
+/// MCP Server configuration.
+///
+/// Controls how the server identifies itself and what browser/capability
+/// configuration to use.
+///
+/// # Examples
+///
+/// ```
+/// use viewpoint_mcp::ServerConfig;
+/// use viewpoint_mcp::browser::BrowserConfig;
+///
+/// // Default configuration
+/// let config = ServerConfig::default();
+///
+/// // Custom configuration with headless browser
+/// let config = ServerConfig {
+///     browser: BrowserConfig {
+///         headless: true,
+///         ..Default::default()
+///     },
+///     capabilities: vec!["vision".to_string()],
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     /// Server name reported to clients

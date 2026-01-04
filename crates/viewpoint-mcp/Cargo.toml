@@ -43,6 +43,7 @@ base64 = "0.22"
 viewpoint-core = { workspace = true }
 viewpoint-cdp = { workspace = true }
 viewpoint-js = { workspace = true }
+viewpoint-js-core = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
