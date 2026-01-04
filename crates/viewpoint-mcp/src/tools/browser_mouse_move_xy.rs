@@ -107,6 +107,8 @@ impl Tool for BrowserMouseMoveXyTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Move the mouse using page.mouse()

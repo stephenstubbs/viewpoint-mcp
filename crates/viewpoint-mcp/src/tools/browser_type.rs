@@ -108,11 +108,13 @@ impl Tool for BrowserTypeTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Capture current snapshot for validation
         let options = SnapshotOptions::default();
-        let snapshot = AccessibilitySnapshot::capture(page, options)
+        let snapshot = AccessibilitySnapshot::capture(&page, options)
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 

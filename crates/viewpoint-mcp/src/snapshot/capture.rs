@@ -53,15 +53,29 @@ impl AccessibilitySnapshot {
     /// This captures the full accessibility tree including iframe content.
     /// Frame boundaries are marked in the output for clarity.
     ///
+    /// For pages with empty or minimal accessibility trees (e.g., blank pages,
+    /// pages still loading), returns a minimal document node.
+    ///
     /// # Errors
     ///
     /// Returns an error if the accessibility tree cannot be captured
     pub async fn capture(page: &Page, options: SnapshotOptions) -> SnapshotResult<Self> {
         // Capture aria snapshot with refs, including iframe content
-        let aria_snapshot = page
-            .aria_snapshot_with_frames()
-            .await
-            .map_err(|e| SnapshotError::CaptureError(e.to_string()))?;
+        // Handle empty accessibility trees gracefully
+        let aria_snapshot = match page.aria_snapshot_with_frames().await {
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                let error_msg = e.to_string();
+                // Check if this is the null/empty accessibility tree error
+                if error_msg.contains("invalid type: null")
+                    || error_msg.contains("expected struct AriaSnapshot")
+                {
+                    // Return empty snapshot for empty pages
+                    return Ok(Self::empty_snapshot(options.context));
+                }
+                return Err(SnapshotError::CaptureError(error_msg));
+            }
+        };
 
         let mut ref_map = HashMap::new();
         let root =
@@ -88,6 +102,24 @@ impl AccessibilitySnapshot {
         snapshot.stale_detector.update(&snapshot.root);
 
         Ok(snapshot)
+    }
+
+    /// Create an empty snapshot for pages with no accessibility tree
+    ///
+    /// This returns a minimal document node, which is the expected output
+    /// for blank pages or pages with no accessible content.
+    fn empty_snapshot(context: Option<String>) -> Self {
+        let root = SnapshotElement::new("document");
+        let formatter = SnapshotFormatter::new();
+
+        Self {
+            root,
+            ref_map: HashMap::new(),
+            compact_mode: false,
+            formatter,
+            stale_detector: StaleRefDetector::new(),
+            context,
+        }
     }
 
     /// Convert a viewpoint `AriaSnapshot` to our internal representation
@@ -195,5 +227,38 @@ impl AccessibilitySnapshot {
     #[must_use]
     pub fn context(&self) -> Option<&str> {
         self.context.as_deref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_snapshot_has_document_root() {
+        let snapshot = AccessibilitySnapshot::empty_snapshot(None);
+
+        assert_eq!(snapshot.root().role, "document");
+        assert!(snapshot.root().children.is_empty());
+        assert_eq!(snapshot.ref_count(), 0);
+        assert_eq!(snapshot.element_count(), 1);
+        assert!(!snapshot.is_compact());
+    }
+
+    #[test]
+    fn test_empty_snapshot_with_context() {
+        let snapshot = AccessibilitySnapshot::empty_snapshot(Some("test-context".to_string()));
+
+        assert_eq!(snapshot.context(), Some("test-context"));
+        assert_eq!(snapshot.root().role, "document");
+    }
+
+    #[test]
+    fn test_empty_snapshot_format() {
+        let snapshot = AccessibilitySnapshot::empty_snapshot(None);
+        let output = snapshot.format();
+
+        // Should contain "document" since that's the root role
+        assert!(output.contains("document"));
     }
 }

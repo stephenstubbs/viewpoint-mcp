@@ -72,7 +72,11 @@ impl Tool for BrowserNavigateTool {
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
         // Auto-create a new page if context has no pages
-        if context.page_count() == 0 {
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
+        if page_count == 0 {
             context
                 .new_page()
                 .await
@@ -81,6 +85,8 @@ impl Tool for BrowserNavigateTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Navigate to URL

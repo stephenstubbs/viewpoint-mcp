@@ -157,7 +157,7 @@ async fn test_element_screenshot_bounding_box_workaround() {
 
     // Get the page directly
     let context = browser.active_context().unwrap();
-    let page = context.active_page().unwrap();
+    let page = context.active_page().await.unwrap().unwrap();
 
     // Get snapshot refs
     let snapshot = page

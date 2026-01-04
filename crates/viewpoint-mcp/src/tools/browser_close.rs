@@ -63,11 +63,14 @@ impl Tool for BrowserCloseTool {
 
         // Get active context and page info before closing
         let context = browser
-            .active_context()
+            .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context.page_count();
-        let active_page_index = context.active_page;
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
+        let active_page_index = context.active_page_index();
         let current_url = context.current_url.clone();
 
         if page_count == 0 {
@@ -77,10 +80,6 @@ impl Tool for BrowserCloseTool {
         }
 
         // Close the active page
-        let context = browser
-            .active_context_mut()
-            .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
-
         context
             .close_page(active_page_index)
             .await

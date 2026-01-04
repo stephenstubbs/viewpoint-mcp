@@ -26,7 +26,7 @@ async fn test_browser_initialize_and_shutdown() {
     // Default context should exist
     let ctx = state.active_context().expect("Should have active context");
     assert_eq!(ctx.name, "default");
-    assert!(ctx.page_count() > 0);
+    assert!(ctx.page_count().await.unwrap() > 0);
 
     // Shutdown
     state.shutdown().await;
@@ -109,11 +109,11 @@ async fn test_browser_context_isolation() {
     // Each context should have its own pages
     state.switch_context("context_a").unwrap();
     let ctx_a = state.active_context().unwrap();
-    assert!(ctx_a.page_count() > 0);
+    assert!(ctx_a.page_count().await.unwrap() > 0);
 
     state.switch_context("context_b").unwrap();
     let ctx_b = state.active_context().unwrap();
-    assert!(ctx_b.page_count() > 0);
+    assert!(ctx_b.page_count().await.unwrap() > 0);
 
     // Cleanup
     state.shutdown().await;
@@ -269,7 +269,7 @@ async fn test_browser_headless_mode() {
     // Browser should be running in headless mode
     // (No visible window, but still functional)
     let ctx = state.active_context().expect("Should have context");
-    assert!(ctx.page_count() > 0);
+    assert!(ctx.page_count().await.unwrap() > 0);
 
     state.shutdown().await;
 }
@@ -323,7 +323,7 @@ async fn test_browser_cdp_endpoint_connection() {
 
     // Should have a working browser
     let ctx = state.active_context().expect("Should have context");
-    assert!(ctx.page_count() > 0);
+    assert!(ctx.page_count().await.unwrap() > 0);
 
     state.shutdown().await;
 }

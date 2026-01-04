@@ -16,7 +16,11 @@ async fn test_accessibility_snapshot_basic() {
 
     // Get the active page
     let ctx = state.active_context().expect("Should have context");
-    let page = ctx.active_page().expect("Should have page");
+    let page = ctx
+        .active_page()
+        .await
+        .expect("Failed to get active page")
+        .expect("Should have page");
 
     // Set page content (using set_content like viewpoint-core tests for proper DOM access)
     page.set_content(
@@ -34,7 +38,7 @@ async fn test_accessibility_snapshot_basic() {
 
     // Capture accessibility snapshot
     let options = SnapshotOptions::default();
-    let snapshot = AccessibilitySnapshot::capture(page, options)
+    let snapshot = AccessibilitySnapshot::capture(&page, options)
         .await
         .expect("Failed to capture snapshot");
 
@@ -73,7 +77,11 @@ async fn test_accessibility_snapshot_ref_lookup() {
         .expect("Failed to initialize browser");
 
     let ctx = state.active_context().expect("Should have context");
-    let page = ctx.active_page().expect("Should have page");
+    let page = ctx
+        .active_page()
+        .await
+        .expect("Failed to get active page")
+        .expect("Should have page");
 
     // Navigate to a page with identifiable elements
     page.goto("data:text/html,<html><body><button id='submit-btn'>Submit</button></body></html>")
@@ -83,7 +91,7 @@ async fn test_accessibility_snapshot_ref_lookup() {
 
     // Capture snapshot
     let options = SnapshotOptions::default();
-    let snapshot = AccessibilitySnapshot::capture(page, options)
+    let snapshot = AccessibilitySnapshot::capture(&page, options)
         .await
         .expect("Failed to capture snapshot");
 
@@ -119,7 +127,11 @@ async fn test_accessibility_snapshot_stability_across_refreshes() {
         .expect("Failed to initialize browser");
 
     let ctx = state.active_context().expect("Should have context");
-    let page = ctx.active_page().expect("Should have page");
+    let page = ctx
+        .active_page()
+        .await
+        .expect("Failed to get active page")
+        .expect("Should have page");
 
     // Navigate to a page with a stable element ID
     let html = r#"<html><body>
@@ -132,7 +144,7 @@ async fn test_accessibility_snapshot_stability_across_refreshes() {
 
     // First snapshot
     let options = SnapshotOptions::default();
-    let snapshot1 = AccessibilitySnapshot::capture(page, options.clone())
+    let snapshot1 = AccessibilitySnapshot::capture(&page, options.clone())
         .await
         .expect("Failed to capture first snapshot");
 
@@ -140,7 +152,7 @@ async fn test_accessibility_snapshot_stability_across_refreshes() {
     page.reload().await.expect("Failed to reload");
 
     // Second snapshot
-    let snapshot2 = AccessibilitySnapshot::capture(page, options)
+    let snapshot2 = AccessibilitySnapshot::capture(&page, options)
         .await
         .expect("Failed to capture second snapshot");
 
@@ -179,7 +191,11 @@ async fn test_accessibility_snapshot_compact_mode() {
         .expect("Failed to initialize browser");
 
     let ctx = state.active_context().expect("Should have context");
-    let page = ctx.active_page().expect("Should have page");
+    let page = ctx
+        .active_page()
+        .await
+        .expect("Failed to get active page")
+        .expect("Should have page");
 
     // Create a page with many buttons to trigger compact mode (>100 elements)
     let mut buttons = String::new();
@@ -198,7 +214,7 @@ async fn test_accessibility_snapshot_compact_mode() {
         all_refs: false,
         ..Default::default()
     };
-    let snapshot = AccessibilitySnapshot::capture(page, options)
+    let snapshot = AccessibilitySnapshot::capture(&page, options)
         .await
         .expect("Failed to capture snapshot");
 
@@ -212,7 +228,7 @@ async fn test_accessibility_snapshot_compact_mode() {
         all_refs: true,
         ..Default::default()
     };
-    let snapshot_all = AccessibilitySnapshot::capture(page, options_all)
+    let snapshot_all = AccessibilitySnapshot::capture(&page, options_all)
         .await
         .expect("Failed to capture snapshot with allRefs");
 

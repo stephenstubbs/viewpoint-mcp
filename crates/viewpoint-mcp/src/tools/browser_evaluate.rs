@@ -102,13 +102,15 @@ impl Tool for BrowserEvaluateTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Execute JavaScript based on whether an element ref is provided
         let result = if let Some(ref element_ref_str) = input.element_ref {
             // Capture current snapshot for validation
             let options = SnapshotOptions::default();
-            let snapshot = AccessibilitySnapshot::capture(page, options)
+            let snapshot = AccessibilitySnapshot::capture(&page, options)
                 .await
                 .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 

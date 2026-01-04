@@ -106,8 +106,11 @@ impl BrowserTabsTool {
             .active_context()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context.page_count();
-        let active_index = context.active_page;
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
+        let active_index = context.active_page_index();
 
         if page_count == 0 {
             return Ok("No tabs open".to_string());
@@ -134,8 +137,11 @@ impl BrowserTabsTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create new tab: {e}")))?;
 
-        let new_index = context.active_page;
-        let page_count = context.page_count();
+        let new_index = context.active_page_index();
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
 
         // Invalidate cache for new tab
         context.invalidate_cache();
@@ -150,14 +156,17 @@ impl BrowserTabsTool {
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context.page_count();
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
         if page_count == 0 {
             return Err(ToolError::BrowserNotAvailable(
                 "No tabs to close".to_string(),
             ));
         }
 
-        let target_index = index.unwrap_or(context.active_page);
+        let target_index = index.unwrap_or_else(|| context.active_page_index());
 
         if target_index >= page_count {
             return Err(ToolError::InvalidParams(format!(
@@ -189,7 +198,10 @@ impl BrowserTabsTool {
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        let page_count = context.page_count();
+        let page_count = context
+            .page_count()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get page count: {e}")))?;
         if index >= page_count {
             return Err(ToolError::InvalidParams(format!(
                 "Tab index {index} out of range (0-{})",
@@ -197,7 +209,7 @@ impl BrowserTabsTool {
             )));
         }
 
-        let switched = context.switch_page(index);
+        let switched = context.switch_page(index).await;
 
         if switched {
             // Invalidate cache when switching tabs

@@ -18,7 +18,7 @@ pub use console::{
 };
 pub use context::ContextState;
 pub use error::BrowserError;
-pub use state::BrowserState;
+pub use state::{BrowserState, ContextInfo};
 
 /// Result type for browser operations
 pub type Result<T> = std::result::Result<T, BrowserError>;

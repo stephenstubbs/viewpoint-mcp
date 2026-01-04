@@ -104,7 +104,7 @@ impl Tool for BrowserConsoleMessagesTool {
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
         // Get console buffer for active page
-        let console_buffer = context.active_console_buffer().ok_or_else(|| {
+        let console_buffer = context.active_console_buffer().await.ok_or_else(|| {
             ToolError::BrowserNotAvailable("No active page for console messages".to_string())
         })?;
 

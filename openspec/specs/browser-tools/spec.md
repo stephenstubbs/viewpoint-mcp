@@ -109,6 +109,18 @@ The system SHALL provide tools for interacting with page elements using accessib
 - **WHEN** `browser_file_upload` is called with `paths: ["/path/to/file.pdf"]`
 - **THEN** the files are uploaded to the active file input
 
+#### Scenario: Upload files with hidden input
+- **WHEN** `browser_file_upload` is called with file paths
+- **AND** the file input element is hidden or dynamically created
+- **THEN** the system SHALL locate the file input regardless of visibility state
+- **AND** use viewpoint's file chooser handling to upload the files
+
+#### Scenario: Upload files after click triggers file chooser
+- **WHEN** a click action on a button triggers a file chooser dialog
+- **AND** `browser_file_upload` is called with file paths
+- **THEN** the system intercepts the file chooser event
+- **AND** provides the specified files to the chooser
+
 #### Scenario: Action without navigation returns promptly
 - **WHEN** an action is performed that does not trigger navigation
 - **THEN** the system waits briefly for any network activity to settle

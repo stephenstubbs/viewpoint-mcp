@@ -268,10 +268,10 @@ async fn test_navigate_back_invalidates_cache() {
 
     // Taking a snapshot should work (cache was invalidated)
     let ctx = browser.active_context().unwrap();
-    let page = ctx.active_page().unwrap();
+    let page = ctx.active_page().await.unwrap().unwrap();
 
     use viewpoint_mcp::snapshot::{AccessibilitySnapshot, SnapshotOptions};
-    let snapshot = AccessibilitySnapshot::capture(page, SnapshotOptions::default())
+    let snapshot = AccessibilitySnapshot::capture(&page, SnapshotOptions::default())
         .await
         .unwrap();
 
@@ -397,7 +397,7 @@ async fn test_navigate_after_all_pages_closed() {
 
     // Verify the context now has a page
     let context = browser.active_context().unwrap();
-    assert_eq!(context.page_count(), 1);
+    assert_eq!(context.page_count().await.unwrap(), 1);
 
     browser.shutdown().await;
 }

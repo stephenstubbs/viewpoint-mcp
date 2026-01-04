@@ -127,6 +127,8 @@ impl Tool for BrowserSnapshotTool {
         // Get active page for capture
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Capture new snapshot
@@ -137,7 +139,7 @@ impl Tool for BrowserSnapshotTool {
             context: context_name,
         };
 
-        let snapshot = AccessibilitySnapshot::capture(page, options)
+        let snapshot = AccessibilitySnapshot::capture(&page, options)
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 

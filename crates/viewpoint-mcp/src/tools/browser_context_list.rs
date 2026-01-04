@@ -64,8 +64,8 @@ impl Tool for BrowserContextListTool {
         // Get active context name
         let active_context_name = browser.active_context_name().to_string();
 
-        // List all contexts
-        let contexts = browser.list_contexts();
+        // List all contexts with dynamically fetched URLs
+        let contexts = browser.list_contexts_with_urls().await;
 
         if contexts.is_empty() {
             return Ok("No browser contexts available".to_string());
@@ -75,11 +75,10 @@ impl Tool for BrowserContextListTool {
         let context_infos: Vec<Value> = contexts
             .iter()
             .map(|ctx| {
-                let is_active = ctx.name == active_context_name;
                 json!({
                     "name": ctx.name,
-                    "isActive": is_active,
-                    "pageCount": ctx.page_count(),
+                    "isActive": ctx.is_active,
+                    "pageCount": ctx.page_count,
                     "currentUrl": ctx.current_url,
                     "proxy": ctx.proxy.as_ref().map(|p| json!({
                         "server": p.server,

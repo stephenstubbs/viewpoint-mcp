@@ -82,6 +82,8 @@ impl Tool for BrowserHandleDialogTool {
 
         let _page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Note: Dialog handling in viewpoint-core is event-based via page.on_dialog()

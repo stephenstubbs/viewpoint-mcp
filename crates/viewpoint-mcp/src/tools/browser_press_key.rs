@@ -78,6 +78,8 @@ impl Tool for BrowserPressKeyTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // Press the key using the keyboard API

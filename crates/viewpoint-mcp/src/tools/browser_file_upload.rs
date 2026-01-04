@@ -78,16 +78,20 @@ impl Tool for BrowserFileUploadTool {
 
         let page = context
             .active_page()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to get active page: {e}")))?
             .ok_or_else(|| ToolError::BrowserNotAvailable("No active page".to_string()))?;
 
         // If no paths provided, cancel the file chooser
         if input.paths.is_empty() {
             // Set empty files on the file input to cancel
-            let locator = page.locator("input[type=file]");
-            locator.set_input_files::<&str>(&[]).await.map_err(|e| {
-                ToolError::ExecutionFailed(format!("Failed to cancel file chooser: {e}"))
-            })?;
-
+            // Try multiple selectors to find any file input (including hidden ones)
+            let empty: &[&str] = &[];
+            if let Err(e) = Self::set_files_on_any_input(&page, empty).await {
+                return Err(ToolError::ExecutionFailed(format!(
+                    "Failed to cancel file chooser: {e}"
+                )));
+            }
             return Ok("File chooser cancelled".to_string());
         }
 
@@ -107,10 +111,8 @@ impl Tool for BrowserFileUploadTool {
         // Convert paths to &str slice for the API
         let path_refs: Vec<&str> = input.paths.iter().map(String::as_str).collect();
 
-        // Set the files on the file input using locator
-        let locator = page.locator("input[type=file]");
-        locator
-            .set_input_files(&path_refs)
+        // Set the files on the file input using multiple strategies
+        Self::set_files_on_any_input(&page, &path_refs)
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to upload files: {e}")))?;
 
@@ -128,5 +130,54 @@ impl Tool for BrowserFileUploadTool {
             input.paths.len(),
             file_names.join(", ")
         ))
+    }
+}
+
+impl BrowserFileUploadTool {
+    /// Try multiple strategies to find and set files on a file input element.
+    ///
+    /// File inputs are often hidden for styling purposes, so we need to try
+    /// different approaches:
+    /// 1. Standard visible file input: `input[type=file]`
+    /// 2. Hidden file input (opacity/visibility): Still matched by type selector
+    /// 3. Any input with accept attribute (common pattern)
+    async fn set_files_on_any_input<P: AsRef<std::path::Path>>(
+        page: &viewpoint_core::Page,
+        files: &[P],
+    ) -> Result<(), String> {
+        // Try the standard file input selector first
+        let locator = page.locator("input[type=file]");
+
+        // The locator.set_input_files handles hidden inputs correctly
+        // by using CDP's DOM.setFileInputFiles which works regardless of visibility
+        match locator.set_input_files(files).await {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                // Check if it's a "no elements found" error
+                let error_str = e.to_string();
+                if !error_str.contains("not found")
+                    && !error_str.contains("No elements")
+                    && !error_str.contains("no element")
+                {
+                    // Different error, propagate it
+                    return Err(error_str);
+                }
+                // Fall through to try alternative selectors
+            }
+        }
+
+        // Try to find input by accept attribute (common for hidden file inputs)
+        let locator_with_accept = page.locator("input[accept]");
+        match locator_with_accept.set_input_files(files).await {
+            Ok(()) => return Ok(()),
+            Err(_) => {}
+        }
+
+        // If all strategies failed, provide a helpful error message
+        Err(
+            "No file input element found on the page. Make sure to click the upload button \
+             or file input element before calling this tool."
+                .to_string(),
+        )
     }
 }

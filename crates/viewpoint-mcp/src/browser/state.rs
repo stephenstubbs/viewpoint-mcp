@@ -372,4 +372,49 @@ impl BrowserState {
     pub fn active_context_name(&self) -> &str {
         &self.active_context
     }
+
+    /// Get information about all contexts with current URLs fetched dynamically.
+    ///
+    /// Unlike `list_contexts()`, this method queries each page for its current URL,
+    /// ensuring the returned information is always up-to-date.
+    pub async fn list_contexts_with_urls(&self) -> Vec<ContextInfo> {
+        let mut infos = Vec::with_capacity(self.contexts.len());
+
+        for ctx in self.contexts.values() {
+            let current_url = ctx.get_current_url().await;
+            let is_active = ctx.name == self.active_context;
+
+            infos.push(ContextInfo {
+                name: ctx.name.clone(),
+                is_active,
+                page_count: ctx.page_count().await.unwrap_or(0),
+                current_url,
+                proxy: ctx.proxy.clone(),
+            });
+        }
+
+        infos
+    }
+}
+
+/// Information about a browser context with dynamically fetched URL.
+///
+/// This struct contains a snapshot of context state with the current URL
+/// fetched from the browser rather than cached.
+#[derive(Debug, Clone)]
+pub struct ContextInfo {
+    /// Context name (unique identifier)
+    pub name: String,
+
+    /// Whether this is the active context
+    pub is_active: bool,
+
+    /// Number of pages in this context
+    pub page_count: usize,
+
+    /// Current URL of the active page (fetched from browser)
+    pub current_url: Option<String>,
+
+    /// Proxy configuration for this context
+    pub proxy: Option<super::config::ProxyConfig>,
 }
