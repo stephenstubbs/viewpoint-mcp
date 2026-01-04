@@ -13,6 +13,7 @@ Viewpoint MCP is an MCP (Model Context Protocol) server providing browser automa
 - **Async Runtime**: Tokio
 - **Error Handling**: `thiserror` (libraries), `anyhow` (binaries)
 - **Build Environment**: Nix flakes + direnv
+- **TLS / SSL**: Rusttls
 - **Browser Automation**: [Viewpoint](https://github.com/stephenstubbs/viewpoint) (viewpoint-core, viewpoint-cdp)
 
 ## Conventions
