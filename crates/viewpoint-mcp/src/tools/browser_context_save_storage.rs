@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser context save storage tool - saves context storage state to a file
@@ -113,11 +113,12 @@ impl Tool for BrowserContextSaveStorageTool {
             ))
         })?;
 
-        Ok(serde_json::to_string(&json!({
+        let output = serde_json::to_string(&json!({
             "saved": true,
             "context": context_name,
             "path": input.path,
             "message": format!("Storage state for context '{}' saved to '{}'", context_name, input.path)
-        })).unwrap_or_else(|_| format!("Storage state saved to '{}'", input.path)))
+        })).unwrap_or_else(|_| format!("Storage state saved to '{}'", input.path));
+        Ok(ToolOutput::text(output))
     }
 }

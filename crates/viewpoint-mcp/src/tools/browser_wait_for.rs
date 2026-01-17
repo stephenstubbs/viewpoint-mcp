@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use std::time::Duration;
 use viewpoint_js::js;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser wait for tool - waits for text, text to disappear, or a specified time
@@ -112,7 +112,7 @@ impl Tool for BrowserWaitForTool {
             }
 
             tokio::time::sleep(Duration::from_secs_f64(seconds)).await;
-            return Ok(format!("Waited for {seconds} seconds"));
+            return Ok(ToolOutput::text(format!("Waited for {seconds} seconds")));
         }
 
         // Ensure browser is initialized for text-based waits
@@ -147,7 +147,7 @@ impl Tool for BrowserWaitForTool {
             // Invalidate cache as page content changed
             context.invalidate_cache();
 
-            return Ok(format!("Text '{text}' appeared on page"));
+            return Ok(ToolOutput::text(format!("Text '{text}' appeared on page")));
         }
 
         // Handle text disappearance wait using wait_for_function
@@ -167,7 +167,9 @@ impl Tool for BrowserWaitForTool {
             // Invalidate cache as page content changed
             context.invalidate_cache();
 
-            return Ok(format!("Text '{text}' disappeared from page"));
+            return Ok(ToolOutput::text(format!(
+                "Text '{text}' disappeared from page"
+            )));
         }
 
         // This shouldn't be reachable due to earlier validation

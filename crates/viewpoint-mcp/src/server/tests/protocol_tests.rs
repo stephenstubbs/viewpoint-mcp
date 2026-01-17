@@ -4,7 +4,9 @@ use serde_json::{Value, json};
 
 use crate::browser::BrowserConfig;
 use crate::server::ServerConfig;
-use crate::server::protocol::{JsonRpcRequest, JsonRpcResponse, McpServer};
+use crate::server::protocol::{
+    ContentItem, JsonRpcRequest, JsonRpcResponse, McpServer, ToolCallResult, ToolOutput,
+};
 
 fn create_test_server() -> McpServer {
     let config = ServerConfig {
@@ -73,13 +75,13 @@ async fn test_tools_list_returns_core_tools() {
     let tools = result["tools"].as_array().unwrap();
 
     // Without any capabilities enabled, we should have 27 core tools
-    // (30 total - 3 vision tools - 0 pdf tools that are hidden)
-    // Actually: 30 total tools, 3 require Vision, 1 requires Pdf
-    // So without capabilities: 30 - 3 - 1 = 26 core tools
+    // (31 total - 3 vision tools - 1 pdf tool = 27 core tools)
+    // Actually: 31 total tools, 3 require Vision, 1 requires Pdf
+    // So without capabilities: 31 - 3 - 1 = 27 core tools
     assert_eq!(
         tools.len(),
-        26,
-        "Expected 26 core tools without optional capabilities"
+        27,
+        "Expected 27 core tools without optional capabilities"
     );
 
     // Verify some expected tool names are present
@@ -202,8 +204,8 @@ async fn test_tools_registered_with_vision_capability() {
 
     let tools = result["tools"].as_array().unwrap();
 
-    // With vision enabled: 26 core + 3 vision = 29 tools
-    assert_eq!(tools.len(), 29, "Expected 29 tools with vision capability");
+    // With vision enabled: 27 core + 3 vision = 30 tools
+    assert_eq!(tools.len(), 30, "Expected 30 tools with vision capability");
 
     let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
 
@@ -231,12 +233,153 @@ async fn test_tools_registered_with_all_capabilities() {
 
     let tools = result["tools"].as_array().unwrap();
 
-    // With all capabilities: all 30 tools
-    assert_eq!(tools.len(), 30, "Expected 30 tools with all capabilities");
+    // With all capabilities: all 31 tools
+    assert_eq!(tools.len(), 31, "Expected 31 tools with all capabilities");
 
     let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
 
     // All optional tools should be present
     assert!(tool_names.contains(&"browser_mouse_click_xy"));
     assert!(tool_names.contains(&"browser_pdf_save"));
+}
+
+// =============================================================================
+// ContentItem serialization tests
+// =============================================================================
+
+#[test]
+fn test_content_item_text_serialization() {
+    let item = ContentItem::text("Hello, world!");
+    let json = serde_json::to_value(&item).unwrap();
+
+    assert_eq!(json["type"], "text");
+    assert_eq!(json["text"], "Hello, world!");
+    // Ensure no extra fields
+    assert!(json.get("data").is_none());
+    assert!(json.get("mimeType").is_none());
+}
+
+#[test]
+fn test_content_item_image_serialization() {
+    let item = ContentItem::image("base64encodeddata".to_string(), "image/jpeg");
+    let json = serde_json::to_value(&item).unwrap();
+
+    assert_eq!(json["type"], "image");
+    assert_eq!(json["data"], "base64encodeddata");
+    assert_eq!(json["mimeType"], "image/jpeg");
+    // Ensure no extra fields
+    assert!(json.get("text").is_none());
+}
+
+#[test]
+fn test_content_item_text_with_special_characters() {
+    let item = ContentItem::text("Hello \"world\"\nNew line\tTab");
+    let json = serde_json::to_value(&item).unwrap();
+
+    assert_eq!(json["type"], "text");
+    assert_eq!(json["text"], "Hello \"world\"\nNew line\tTab");
+}
+
+#[test]
+fn test_content_item_image_with_png_mime() {
+    let item = ContentItem::image("pngdata".to_string(), "image/png");
+    let json = serde_json::to_value(&item).unwrap();
+
+    assert_eq!(json["type"], "image");
+    assert_eq!(json["mimeType"], "image/png");
+}
+
+#[test]
+fn test_tool_output_text_helper() {
+    let output = ToolOutput::text("Simple response");
+    assert_eq!(output.content.len(), 1);
+
+    if let ContentItem::Text { text } = &output.content[0] {
+        assert_eq!(text, "Simple response");
+    } else {
+        panic!("Expected Text content item");
+    }
+}
+
+#[test]
+fn test_tool_output_with_multiple_items() {
+    let output = ToolOutput::new(vec![
+        ContentItem::text("Screenshot saved to path/file.png"),
+        ContentItem::image("base64data".to_string(), "image/jpeg"),
+    ]);
+
+    assert_eq!(output.content.len(), 2);
+
+    // First item should be text
+    if let ContentItem::Text { text } = &output.content[0] {
+        assert!(text.contains("Screenshot saved"));
+    } else {
+        panic!("Expected Text content item first");
+    }
+
+    // Second item should be image
+    if let ContentItem::Image { data, mime_type } = &output.content[1] {
+        assert_eq!(data, "base64data");
+        assert_eq!(mime_type, "image/jpeg");
+    } else {
+        panic!("Expected Image content item second");
+    }
+}
+
+#[test]
+fn test_tool_call_result_serialization_success() {
+    let result = ToolCallResult {
+        content: vec![ContentItem::text("Operation completed")],
+        is_error: false,
+    };
+    let json = serde_json::to_value(&result).unwrap();
+
+    // is_error should be omitted when false (skip_serializing_if)
+    assert!(json.get("isError").is_none());
+    assert!(json.get("content").is_some());
+
+    let content = json["content"].as_array().unwrap();
+    assert_eq!(content.len(), 1);
+    assert_eq!(content[0]["type"], "text");
+    assert_eq!(content[0]["text"], "Operation completed");
+}
+
+#[test]
+fn test_tool_call_result_serialization_error() {
+    let result = ToolCallResult {
+        content: vec![ContentItem::text("Error: something went wrong")],
+        is_error: true,
+    };
+    let json = serde_json::to_value(&result).unwrap();
+
+    // is_error should be present when true
+    assert_eq!(json["isError"], true);
+
+    let content = json["content"].as_array().unwrap();
+    assert_eq!(content.len(), 1);
+    assert_eq!(content[0]["type"], "text");
+}
+
+#[test]
+fn test_tool_call_result_with_image_content() {
+    let result = ToolCallResult {
+        content: vec![
+            ContentItem::text("Screenshot saved to ./screenshots/page.png"),
+            ContentItem::image("iVBORw0KGgo=".to_string(), "image/jpeg"),
+        ],
+        is_error: false,
+    };
+    let json = serde_json::to_value(&result).unwrap();
+
+    let content = json["content"].as_array().unwrap();
+    assert_eq!(content.len(), 2);
+
+    // Verify text item
+    assert_eq!(content[0]["type"], "text");
+    assert!(content[0]["text"].as_str().unwrap().contains("Screenshot"));
+
+    // Verify image item
+    assert_eq!(content[1]["type"], "image");
+    assert_eq!(content[1]["data"], "iVBORw0KGgo=");
+    assert_eq!(content[1]["mimeType"], "image/jpeg");
 }

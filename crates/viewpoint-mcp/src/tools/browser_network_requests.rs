@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use viewpoint_js::js;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser network requests tool - lists network requests since page load
@@ -126,10 +126,10 @@ impl Tool for BrowserNetworkRequestsTool {
         let requests = result.as_array().map_or(0, Vec::len);
 
         if requests == 0 {
-            return Ok("No network requests recorded.".to_string());
+            return Ok(ToolOutput::text("No network requests recorded."));
         }
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Network requests ({} total{}):\n\n{}",
             requests,
             if input.include_static {
@@ -138,6 +138,6 @@ impl Tool for BrowserNetworkRequestsTool {
                 ", excluding static resources"
             },
             serde_json::to_string_pretty(&result).unwrap_or_else(|_| "[]".to_string())
-        ))
+        )))
     }
 }

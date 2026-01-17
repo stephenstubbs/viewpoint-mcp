@@ -1,6 +1,50 @@
 //! Server configuration types
 
+use std::path::PathBuf;
+
 use crate::browser::BrowserConfig;
+
+/// How screenshot images are returned in MCP responses.
+///
+/// Controls whether screenshot data is included inline in tool responses
+/// or only saved to files.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ImageResponseMode {
+    /// Save to file, return relative path in text response (default)
+    #[default]
+    File,
+    /// Save to file AND return base64 image in response (for LLMs without file reading)
+    Inline,
+    /// Save to file, return confirmation only (minimal response)
+    Omit,
+}
+
+impl std::str::FromStr for ImageResponseMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "file" => Ok(Self::File),
+            "inline" => Ok(Self::Inline),
+            "omit" => Ok(Self::Omit),
+            other => Err(format!(
+                "Unknown image response mode: '{other}'. Valid values: file, inline, omit"
+            )),
+        }
+    }
+}
+
+impl ImageResponseMode {
+    /// Get the mode name as a string
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::File => "file",
+            Self::Inline => "inline",
+            Self::Omit => "omit",
+        }
+    }
+}
 
 /// MCP Server configuration.
 ///
@@ -39,6 +83,12 @@ pub struct ServerConfig {
 
     /// Optional capabilities (e.g., "vision", "pdf")
     pub capabilities: Vec<String>,
+
+    /// Directory for saving screenshots
+    pub screenshot_dir: PathBuf,
+
+    /// How screenshot images are included in responses
+    pub image_responses: ImageResponseMode,
 }
 
 impl Default for ServerConfig {
@@ -48,6 +98,8 @@ impl Default for ServerConfig {
             version: env!("CARGO_PKG_VERSION").to_string(),
             browser: BrowserConfig::default(),
             capabilities: Vec::new(),
+            screenshot_dir: PathBuf::from(".viewpoint-mcp-screenshots"),
+            image_responses: ImageResponseMode::default(),
         }
     }
 }

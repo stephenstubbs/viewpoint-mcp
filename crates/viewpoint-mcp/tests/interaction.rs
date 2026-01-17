@@ -17,6 +17,7 @@ mod interaction {
     pub mod form_tests;
     pub mod iframe_tests;
     pub mod key_tests;
+    pub mod scroll_tests;
     pub mod type_tests;
 
     use viewpoint_mcp::browser::{BrowserConfig, BrowserState};

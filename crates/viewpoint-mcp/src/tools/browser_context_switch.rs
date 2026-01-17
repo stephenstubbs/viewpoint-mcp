@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser context switch tool - switches to an existing browser context
@@ -82,9 +82,9 @@ impl Tool for BrowserContextSwitchTool {
             .switch_context(&input.name)
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to switch context: {e}")))?;
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Switched from context '{}' to '{}'",
             previous_context, input.name
-        ))
+        )))
     }
 }

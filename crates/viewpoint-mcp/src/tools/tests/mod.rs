@@ -27,6 +27,7 @@ mod browser_network_requests_tests;
 mod browser_pdf_save_tests;
 mod browser_press_key_tests;
 mod browser_resize_tests;
+mod browser_scroll_into_view_tests;
 mod browser_select_option_tests;
 mod browser_snapshot_tests;
 mod browser_tabs_tests;

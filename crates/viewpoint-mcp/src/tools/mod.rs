@@ -16,6 +16,7 @@ mod browser_file_upload;
 mod browser_fill_form;
 mod browser_hover;
 mod browser_press_key;
+mod browser_scroll_into_view;
 mod browser_select_option;
 mod browser_type;
 
@@ -67,6 +68,7 @@ pub use browser_file_upload::BrowserFileUploadTool;
 pub use browser_fill_form::BrowserFillFormTool;
 pub use browser_hover::BrowserHoverTool;
 pub use browser_press_key::BrowserPressKeyTool;
+pub use browser_scroll_into_view::BrowserScrollIntoViewTool;
 pub use browser_select_option::BrowserSelectOptionTool;
 pub use browser_type::BrowserTypeTool;
 
@@ -106,6 +108,9 @@ pub use browser_pdf_save::BrowserPdfSaveTool;
 pub use error::ToolError;
 pub use registry::{ToolRegistry, register_all_tools};
 pub use traits::{Capability, Tool, ToolResult};
+
+// Re-export tool output types from server module for convenience
+pub use crate::server::{ContentItem, ToolOutput};
 
 /// Result type for tool operations
 pub type Result<T> = std::result::Result<T, ToolError>;

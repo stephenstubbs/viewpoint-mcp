@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -230,10 +230,10 @@ impl Tool for BrowserFillFormTool {
         // Invalidate cache after form interaction
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Filled {} field(s): {}",
             filled_fields.len(),
             filled_fields.join(", ")
-        ))
+        )))
     }
 }

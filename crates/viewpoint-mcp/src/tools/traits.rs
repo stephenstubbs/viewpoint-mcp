@@ -8,9 +8,10 @@ use serde_json::Value;
 
 use super::ToolError;
 use crate::browser::BrowserState;
+use crate::server::protocol::ToolOutput;
 
 /// Result type for tool execution
-pub type ToolResult = Result<String, ToolError>;
+pub type ToolResult = Result<ToolOutput, ToolError>;
 
 /// Capability flags that can be enabled via command-line arguments.
 ///

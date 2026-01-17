@@ -80,4 +80,4 @@ pub mod snapshot;
 pub mod tools;
 pub mod transport;
 
-pub use server::{McpServer, ServerConfig};
+pub use server::{ImageResponseMode, McpServer, ServerConfig};

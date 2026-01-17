@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -112,9 +112,9 @@ impl Tool for BrowserHoverTool {
         // Invalidate cache after hover (DOM may have changed via hover effects)
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Hovering over {} [ref={}]",
             input.element, input.element_ref
-        ))
+        )))
     }
 }

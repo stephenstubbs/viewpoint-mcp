@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::{debug, instrument};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -119,7 +119,7 @@ impl Tool for BrowserSnapshotTool {
                 );
             }
 
-            return Ok(result);
+            return Ok(ToolOutput::text(result));
         }
 
         debug!("snapshot cache miss");
@@ -169,6 +169,6 @@ impl Tool for BrowserSnapshotTool {
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
         context.cache_snapshot(snapshot, input.all_refs).await;
 
-        Ok(result)
+        Ok(ToolOutput::text(result))
     }
 }

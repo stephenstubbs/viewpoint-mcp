@@ -134,8 +134,8 @@ impl Default for ToolRegistry {
 
 /// Register all browser tools with the registry
 ///
-/// This function registers all 30 browser tools:
-/// - 27 core tools (always available)
+/// This function registers all 31 browser tools:
+/// - 28 core tools (always available)
 /// - 3 vision tools (require Vision capability)
 /// - 1 PDF tool (requires Pdf capability)
 pub fn register_all_tools(registry: &mut ToolRegistry) {
@@ -145,13 +145,14 @@ pub fn register_all_tools(registry: &mut ToolRegistry) {
     registry.register(Arc::new(super::BrowserNavigateTool::new()));
     registry.register(Arc::new(super::BrowserNavigateBackTool::new()));
 
-    // Interaction tools (8)
+    // Interaction tools (9)
     registry.register(Arc::new(super::BrowserClickTool::new()));
     registry.register(Arc::new(super::BrowserDragTool::new()));
     registry.register(Arc::new(super::BrowserFileUploadTool::new()));
     registry.register(Arc::new(super::BrowserFillFormTool::new()));
     registry.register(Arc::new(super::BrowserHoverTool::new()));
     registry.register(Arc::new(super::BrowserPressKeyTool::new()));
+    registry.register(Arc::new(super::BrowserScrollIntoViewTool::new()));
     registry.register(Arc::new(super::BrowserSelectOptionTool::new()));
     registry.register(Arc::new(super::BrowserTypeTool::new()));
 

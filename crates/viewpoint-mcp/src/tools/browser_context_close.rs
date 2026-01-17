@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser context close tool - closes a browser context
@@ -103,6 +103,6 @@ impl Tool for BrowserContextCloseTool {
             );
         }
 
-        Ok(result)
+        Ok(ToolOutput::text(result))
     }
 }

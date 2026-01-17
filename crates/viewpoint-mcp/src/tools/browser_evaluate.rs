@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use viewpoint_js::js;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -150,14 +150,14 @@ impl Tool for BrowserEvaluateTool {
         };
 
         if let Some(element_desc) = input.element {
-            Ok(format!(
+            Ok(ToolOutput::text(format!(
                 "Evaluated on {} [ref={}]: {}",
                 element_desc,
                 input.element_ref.unwrap_or_default(),
                 result_str
-            ))
+            )))
         } else {
-            Ok(format!("Evaluation result: {result_str}"))
+            Ok(ToolOutput::text(format!("Evaluation result: {result_str}")))
         }
     }
 }

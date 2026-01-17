@@ -9,7 +9,7 @@ use clap::Parser;
 use tracing_subscriber::EnvFilter;
 use viewpoint_mcp::browser::{BrowserConfig, BrowserType, ViewportSize};
 use viewpoint_mcp::transport::{SseConfig, SseTransport, StdioTransport};
-use viewpoint_mcp::{McpServer, ServerConfig};
+use viewpoint_mcp::{ImageResponseMode, McpServer, ServerConfig};
 
 /// Viewpoint MCP Server - Browser automation for LLMs
 #[derive(Parser, Debug)]
@@ -48,6 +48,18 @@ struct Args {
     /// Enable optional capabilities (comma-separated: vision,pdf)
     #[arg(long, value_name = "CAPS")]
     caps: Option<String>,
+
+    /// Directory for saving screenshots (default: .viewpoint-mcp-screenshots/)
+    #[arg(long, value_name = "PATH")]
+    screenshot_dir: Option<PathBuf>,
+
+    /// How screenshot images are included in responses: file (default), inline, or omit
+    ///
+    /// - file: Save to directory, return relative path in text
+    /// - inline: Save to directory AND return base64 image in response
+    /// - omit: Save to directory, return confirmation only
+    #[arg(long, value_name = "MODE", default_value = "file")]
+    image_responses: String,
 }
 
 #[tokio::main]
@@ -80,6 +92,12 @@ async fn main() -> Result<()> {
         .map(|s| s.split(',').map(str::trim).map(String::from).collect())
         .unwrap_or_default();
 
+    // Parse image response mode
+    let image_responses: ImageResponseMode = args.image_responses.parse().unwrap_or_else(|e| {
+        eprintln!("Warning: {e}, using default 'file' mode");
+        ImageResponseMode::File
+    });
+
     // Build browser config
     let browser_config = BrowserConfig {
         headless: args.headless,
@@ -94,6 +112,10 @@ async fn main() -> Result<()> {
     let server_config = ServerConfig {
         browser: browser_config,
         capabilities,
+        screenshot_dir: args
+            .screenshot_dir
+            .unwrap_or_else(|| PathBuf::from(".viewpoint-mcp-screenshots")),
+        image_responses,
         ..Default::default()
     };
 

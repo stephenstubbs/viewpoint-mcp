@@ -134,19 +134,45 @@ The system SHALL provide tools for inspecting page state.
 - **THEN** the accessibility tree is captured and formatted
 - **AND** element refs are assigned for interactive elements
 
-#### Scenario: Take screenshot
+#### Scenario: Take screenshot (file mode)
 - **WHEN** `browser_take_screenshot` is called
+- **AND** `--image-responses=file` or no flag is set
 - **THEN** a screenshot of the viewport is captured
-- **AND** returned as base64-encoded image data
+- **AND** saved to the screenshot directory (default: `.viewpoint-mcp-screenshots/`)
+- **AND** returned as `TextContent` with the relative file path and description
+
+#### Scenario: Take screenshot (inline mode)
+- **WHEN** `browser_take_screenshot` is called
+- **AND** `--image-responses=inline` is set
+- **THEN** a screenshot of the viewport is captured
+- **AND** saved to the screenshot directory
+- **AND** the image is scaled to fit LLM vision limits (max 1568px dimension, max 1.15MP)
+- **AND** the response includes both `TextContent` (relative path) and `ImageContent` (base64 image data)
+
+#### Scenario: Take screenshot (omit mode)
+- **WHEN** `browser_take_screenshot` is called
+- **AND** `--image-responses=omit` is set
+- **THEN** a screenshot of the viewport is captured
+- **AND** saved to the screenshot directory
+- **AND** the response only confirms the screenshot was taken (no path or image)
+
+#### Scenario: Screenshot image scaling for inline response
+- **WHEN** a screenshot exceeds 1568px in any dimension or 1.15 megapixels total
+- **AND** `--image-responses=inline` is set
+- **THEN** the inline image is scaled down proportionally before encoding
+- **AND** JPEG format at quality 80 is used for smaller size
+- **AND** the full-resolution image is still saved to file
 
 #### Scenario: Screenshot element
 - **WHEN** `browser_take_screenshot` is called with `ref: "c0p0f0e1"`
 - **THEN** the system calls `page.locator_from_ref("c0p0f0e1")`
 - **AND** only the resolved element is captured
+- **AND** saved to the screenshot directory
 
 #### Scenario: Full page screenshot
 - **WHEN** `browser_take_screenshot` is called with `fullPage: true`
 - **THEN** the entire scrollable page is captured
+- **AND** saved to the screenshot directory
 
 #### Scenario: Get console messages
 - **WHEN** `browser_console_messages` is called
@@ -369,4 +395,72 @@ The system SHALL provide tools for managing multiple isolated browser contexts.
 - **THEN** the system skips pages with invalid sessions
 - **AND** collects storage from valid pages
 - **AND** returns success with partial data (or appropriate error if no valid pages)
+
+### Requirement: Scroll Into View Tool
+
+The system SHALL provide a tool for scrolling elements into the visible viewport.
+
+#### Scenario: Scroll element into view
+
+- **WHEN** `browser_scroll_into_view` is called with `ref: "e1a2b3"` and `element: "Submit button"`
+- **THEN** the system calls `page.locator_from_ref("e1a2b3")`
+- **AND** scrolls the element into the center of the viewport
+- **AND** returns success after the scroll completes
+
+#### Scenario: Scroll element not found
+
+- **WHEN** `browser_scroll_into_view` is called with a ref that does not exist
+- **THEN** the system returns an error indicating the element was not found
+
+#### Scenario: Scroll with stale ref
+
+- **WHEN** `browser_scroll_into_view` is called with a ref from a previous snapshot
+- **AND** the element no longer exists in the DOM
+- **THEN** the system returns an error indicating the element may no longer exist
+
+### Requirement: MCP Content Types
+The system SHALL support multiple content types in tool responses as defined by the MCP protocol.
+
+#### Scenario: Text content response
+- **WHEN** a tool returns text output
+- **THEN** the response includes a content item with `type: "text"` and `text` field
+
+#### Scenario: Image content response
+- **WHEN** a tool returns image output
+- **AND** `--image-responses=inline` is set
+- **THEN** the response includes a content item with `type: "image"`, `data` (base64), and `mimeType` fields
+
+#### Scenario: Mixed content response
+- **WHEN** a tool returns both text and image output
+- **THEN** the response `content` array includes both `TextContent` and `ImageContent` items
+- **AND** the order is text first, then images
+
+### Requirement: Screenshot Directory
+The system SHALL save screenshots to a predictable directory location.
+
+#### Scenario: Default screenshot directory
+- **WHEN** a screenshot is taken
+- **AND** no custom directory is configured
+- **THEN** the screenshot is saved to `.viewpoint-mcp-screenshots/` in the current working directory
+
+#### Scenario: Custom screenshot directory
+- **WHEN** a screenshot is taken
+- **AND** `--screenshot-dir` was specified at startup
+- **THEN** the screenshot is saved to the specified directory
+
+#### Scenario: Directory creation
+- **WHEN** a screenshot is taken
+- **AND** the screenshot directory does not exist
+- **THEN** the directory is created automatically
+
+#### Scenario: Relative path in response
+- **WHEN** a screenshot is saved
+- **AND** `--image-responses` is `file` or `inline`
+- **THEN** the text response includes the relative file path
+- **AND** the LLM can use the path with file reading tools
+
+#### Scenario: Timestamp-based filenames
+- **WHEN** a screenshot is saved
+- **THEN** the filename follows the pattern `page-{ISO-timestamp}.{ext}`
+- **AND** colons and dots in the timestamp are replaced with dashes
 

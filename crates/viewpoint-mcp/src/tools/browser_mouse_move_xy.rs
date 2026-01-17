@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::traits::Capability;
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser mouse move to coordinates tool
@@ -123,12 +123,15 @@ impl Tool for BrowserMouseMoveXyTool {
         context.invalidate_cache();
 
         if input.steps > 1 {
-            Ok(format!(
+            Ok(ToolOutput::text(format!(
                 "Moved mouse to ({}, {}) in {} steps",
                 input.x, input.y, input.steps
-            ))
+            )))
         } else {
-            Ok(format!("Moved mouse to ({}, {})", input.x, input.y))
+            Ok(ToolOutput::text(format!(
+                "Moved mouse to ({}, {})",
+                input.x, input.y
+            )))
         }
     }
 }

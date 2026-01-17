@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::Path;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser file upload tool - uploads files to a file input
@@ -92,7 +92,7 @@ impl Tool for BrowserFileUploadTool {
                     "Failed to cancel file chooser: {e}"
                 )));
             }
-            return Ok("File chooser cancelled".to_string());
+            return Ok(ToolOutput::text("File chooser cancelled"));
         }
 
         // Validate all paths exist
@@ -125,11 +125,11 @@ impl Tool for BrowserFileUploadTool {
             .filter_map(|p| Path::new(p).file_name()?.to_str())
             .collect();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Uploaded {} file(s): {}",
             input.paths.len(),
             file_names.join(", ")
-        ))
+        )))
     }
 }
 

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser install tool - checks for and installs the browser
@@ -58,14 +58,16 @@ impl Tool for BrowserInstallTool {
         // Check if browser is already working by attempting to initialize
         // If it works, the browser is already installed
         if browser.is_initialized() {
-            return Ok(
-                "Browser is already installed and running. No installation needed.".to_string(),
-            );
+            return Ok(ToolOutput::text(
+                "Browser is already installed and running. No installation needed.",
+            ));
         }
 
         // Try to initialize - this will launch the browser
         match browser.initialize().await {
-            Ok(()) => Ok("Browser is already installed and successfully initialized.".to_string()),
+            Ok(()) => Ok(ToolOutput::text(
+                "Browser is already installed and successfully initialized.",
+            )),
             Err(e) => {
                 // Browser launch failed - attempt installation
                 let error_msg = e.to_string();
@@ -77,7 +79,8 @@ impl Tool for BrowserInstallTool {
                     || error_msg.contains("No such file")
                 {
                     // Provide manual installation instructions
-                    Ok("Browser installation required.\n\
+                    Ok(ToolOutput::text(
+                        "Browser installation required.\n\
                         To install the browser manually, run:\n\
                         \n\
                         npx playwright install chromium\n\
@@ -86,8 +89,8 @@ impl Tool for BrowserInstallTool {
                         \n\
                         npx playwright install\n\
                         \n\
-                        After installation, browser tools should work correctly."
-                        .to_string())
+                        After installation, browser tools should work correctly.",
+                    ))
                 } else {
                     // Some other error - might be a connection issue or config problem
                     Err(ToolError::ExecutionFailed(format!(

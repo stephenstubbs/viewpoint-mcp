@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser tabs tool - list, create, close, or select tabs
@@ -115,7 +115,7 @@ impl BrowserTabsTool {
         let active_index = context.active_page_index().await;
 
         if page_count == 0 {
-            return Ok("No tabs open".to_string());
+            return Ok(ToolOutput::text("No tabs open"));
         }
 
         let mut result = format!("Tabs ({page_count} total):\n");
@@ -126,7 +126,7 @@ impl BrowserTabsTool {
             let _ = writeln!(result, "  {i}: {url}{marker}");
         }
 
-        Ok(result.trim_end().to_string())
+        Ok(ToolOutput::text(result.trim_end()))
     }
 
     async fn new_tab(&self, browser: &mut BrowserState) -> ToolResult {
@@ -148,9 +148,9 @@ impl BrowserTabsTool {
         // Invalidate cache for new tab
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Created new tab at index {new_index} ({page_count} tabs total)"
-        ))
+        )))
     }
 
     async fn close_tab(&self, browser: &mut BrowserState, index: Option<usize>) -> ToolResult {
@@ -189,9 +189,9 @@ impl BrowserTabsTool {
         context.invalidate_cache();
 
         let remaining = page_count - 1;
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Closed tab at index {target_index} ({remaining} tabs remaining)"
-        ))
+        )))
     }
 
     async fn select_tab(&self, browser: &mut BrowserState, index: Option<usize>) -> ToolResult {
@@ -232,7 +232,9 @@ impl BrowserTabsTool {
         if switched {
             // Invalidate cache when switching tabs
             context.invalidate_cache();
-            Ok(format!("Switched to tab at index {index}"))
+            Ok(ToolOutput::text(format!(
+                "Switched to tab at index {index}"
+            )))
         } else {
             Err(ToolError::ExecutionFailed(format!(
                 "Failed to switch to tab at index {index}"

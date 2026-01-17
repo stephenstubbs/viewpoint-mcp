@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use viewpoint_core::MouseButton;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -221,10 +221,10 @@ impl Tool for BrowserClickTool {
                 context.invalidate_cache();
 
                 let element_desc = input.element.as_deref().unwrap_or("element");
-                Ok(format!(
+                Ok(ToolOutput::text(format!(
                     "Clicked {} [ref={}]",
                     element_desc, input.element_ref
-                ))
+                )))
             }
             Err(e) => Err(ToolError::ExecutionFailed(format!(
                 "Failed to click element '{}' [ref={}]: {}. The element may have changed since the snapshot.",

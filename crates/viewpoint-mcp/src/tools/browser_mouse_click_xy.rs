@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::traits::Capability;
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser mouse click at coordinates tool
@@ -185,9 +185,9 @@ impl Tool for BrowserMouseClickXyTool {
             MouseButton::Middle => " (middle button)",
         };
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "{} {} at ({}, {}){}",
             click_type, element_desc, input.x, input.y, button_str
-        ))
+        )))
     }
 }

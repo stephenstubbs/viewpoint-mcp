@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::{BrowserState, ConsoleLevel as BrowserConsoleLevel};
 
 /// Browser console messages tool - retrieves console log messages
@@ -122,9 +122,9 @@ impl Tool for BrowserConsoleMessagesTool {
         };
 
         if messages.is_empty() {
-            return Ok(format!(
+            return Ok(ToolOutput::text(format!(
                 "Console messages (level >= {level_str}):\n\nNo messages captured."
-            ));
+            )));
         }
 
         // Format messages as JSON array for structured output
@@ -141,10 +141,10 @@ impl Tool for BrowserConsoleMessagesTool {
             })
             .collect();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Console messages (level >= {}):\n\n{}",
             level_str,
             serde_json::to_string_pretty(&messages_json).unwrap_or_else(|_| "[]".to_string())
-        ))
+        )))
     }
 }

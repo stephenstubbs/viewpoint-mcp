@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser navigate back tool - navigates back in browser history
@@ -77,9 +77,9 @@ impl Tool for BrowserNavigateBackTool {
 
         if let Some(url) = url {
             context.set_current_url(Some(url.clone())).await;
-            Ok(format!("Navigated back to {url}"))
+            Ok(ToolOutput::text(format!("Navigated back to {url}")))
         } else {
-            Ok("Navigated back".to_string())
+            Ok(ToolOutput::text("Navigated back"))
         }
     }
 }

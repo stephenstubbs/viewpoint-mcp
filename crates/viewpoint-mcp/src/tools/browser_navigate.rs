@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser navigate tool - navigates to a URL
@@ -101,6 +101,6 @@ impl Tool for BrowserNavigateTool {
         // Invalidate cache after navigation
         context.invalidate_cache();
 
-        Ok(format!("Navigated to {}", input.url))
+        Ok(ToolOutput::text(format!("Navigated to {}", input.url)))
     }
 }

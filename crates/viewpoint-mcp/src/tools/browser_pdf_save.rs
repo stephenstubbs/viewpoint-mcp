@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::traits::Capability;
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser PDF save tool
@@ -210,12 +210,12 @@ impl Tool for BrowserPdfSaveTool {
             .await
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "PDF saved to '{}' ({} bytes, format: {:?}, landscape: {})",
             input.path,
             data.len(),
             input.format,
             input.landscape
-        ))
+        )))
     }
 }

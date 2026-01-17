@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser handle dialog tool - accepts or dismisses browser dialogs
@@ -112,6 +112,6 @@ impl Tool for BrowserHandleDialogTool {
         // Invalidate cache as dialog state may have changed
         context.invalidate_cache();
 
-        Ok(result)
+        Ok(ToolOutput::text(result))
     }
 }

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use viewpoint_core::ProxyConfig;
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser context create tool - creates a new isolated browser context
@@ -151,6 +151,6 @@ impl Tool for BrowserContextCreateTool {
             result.push_str(" (storage state loading not yet implemented)");
         }
 
-        Ok(result)
+        Ok(ToolOutput::text(result))
     }
 }

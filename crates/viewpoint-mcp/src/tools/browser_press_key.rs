@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser press key tool - presses a keyboard key
@@ -90,6 +90,6 @@ impl Tool for BrowserPressKeyTool {
         // Invalidate cache after keyboard interaction
         context.invalidate_cache();
 
-        Ok(format!("Pressed key '{}'", input.key))
+        Ok(ToolOutput::text(format!("Pressed key '{}'", input.key)))
     }
 }

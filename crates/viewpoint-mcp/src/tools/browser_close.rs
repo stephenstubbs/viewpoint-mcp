@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser close tool - closes the current page
@@ -100,6 +100,8 @@ impl Tool for BrowserCloseTool {
             ", no pages remaining".to_string()
         };
 
-        Ok(format!("Closed page{url_info}{remaining_info}"))
+        Ok(ToolOutput::text(format!(
+            "Closed page{url_info}{remaining_info}"
+        )))
     }
 }

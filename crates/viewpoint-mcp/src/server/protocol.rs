@@ -170,16 +170,72 @@ pub struct ToolCallParams {
     pub arguments: Value,
 }
 
-/// Tool call result content
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolResultContent {
-    /// Content type
-    #[serde(rename = "type")]
-    pub content_type: String,
-
+/// Content item for tool responses.
+///
+/// MCP responses can contain multiple content items of different types.
+/// This enum supports text and image content per the MCP specification.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ContentItem {
     /// Text content
-    pub text: String,
+    #[serde(rename = "text")]
+    Text {
+        /// The text content
+        text: String,
+    },
+    /// Image content (base64 encoded)
+    #[serde(rename = "image")]
+    Image {
+        /// Base64-encoded image data
+        data: String,
+        /// MIME type (e.g., "image/png", "image/jpeg")
+        #[serde(rename = "mimeType")]
+        mime_type: String,
+    },
+}
+
+impl ContentItem {
+    /// Create a text content item
+    #[must_use]
+    pub fn text(s: impl Into<String>) -> Self {
+        Self::Text { text: s.into() }
+    }
+
+    /// Create an image content item
+    #[must_use]
+    pub fn image(data: String, mime_type: impl Into<String>) -> Self {
+        Self::Image {
+            data,
+            mime_type: mime_type.into(),
+        }
+    }
+}
+
+/// Output from a successful tool execution.
+///
+/// Contains one or more content items that make up the tool's response.
+/// Most tools return a single text item, but screenshot tools may include
+/// an image item as well.
+#[derive(Debug, Clone)]
+pub struct ToolOutput {
+    /// Content items in the response
+    pub content: Vec<ContentItem>,
+}
+
+impl ToolOutput {
+    /// Create a simple text-only output
+    #[must_use]
+    pub fn text(s: impl Into<String>) -> Self {
+        Self {
+            content: vec![ContentItem::text(s)],
+        }
+    }
+
+    /// Create output with multiple content items
+    #[must_use]
+    pub fn new(content: Vec<ContentItem>) -> Self {
+        Self { content }
+    }
 }
 
 /// Tool call result
@@ -187,7 +243,7 @@ pub struct ToolResultContent {
 #[serde(rename_all = "camelCase")]
 pub struct ToolCallResult {
     /// Result content
-    pub content: Vec<ToolResultContent>,
+    pub content: Vec<ContentItem>,
 
     /// Whether the tool execution errored
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -245,10 +301,17 @@ impl McpServer {
         // Register all browser tools
         register_all_tools(&mut tools);
 
+        // Create browser state with screenshot configuration
+        let browser_state = BrowserState::with_screenshot_config(
+            browser_config,
+            config.screenshot_dir.clone(),
+            config.image_responses,
+        );
+
         Self {
             config,
             tools,
-            browser: Arc::new(RwLock::new(BrowserState::new(browser_config))),
+            browser: Arc::new(RwLock::new(browser_state)),
             initialized: false,
         }
     }
@@ -316,10 +379,7 @@ impl McpServer {
 
         let call_result = match result {
             Ok(output) => ToolCallResult {
-                content: vec![ToolResultContent {
-                    content_type: "text".to_string(),
-                    text: output,
-                }],
+                content: output.content,
                 is_error: false,
             },
             Err(e) => {
@@ -330,10 +390,7 @@ impl McpServer {
                 browser.handle_potential_connection_loss(&error_msg);
 
                 ToolCallResult {
-                    content: vec![ToolResultContent {
-                        content_type: "text".to_string(),
-                        text: error_msg,
-                    }],
+                    content: vec![ContentItem::text(error_msg)],
                     is_error: true,
                 }
             }

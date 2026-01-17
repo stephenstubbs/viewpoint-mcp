@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser context list tool - lists all browser contexts
@@ -68,7 +68,7 @@ impl Tool for BrowserContextListTool {
         let contexts = browser.list_contexts_with_urls().await;
 
         if contexts.is_empty() {
-            return Ok("No browser contexts available".to_string());
+            return Ok(ToolOutput::text("No browser contexts available"));
         }
 
         // Build context info list
@@ -95,7 +95,8 @@ impl Tool for BrowserContextListTool {
             "totalCount": context_infos.len()
         });
 
-        serde_json::to_string_pretty(&result)
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to serialize result: {e}")))
+        let output = serde_json::to_string_pretty(&result)
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to serialize result: {e}")))?;
+        Ok(ToolOutput::text(output))
     }
 }

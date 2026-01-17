@@ -39,6 +39,12 @@ hex = { workspace = true }
 # Base64 encoding for screenshots
 base64 = "0.22"
 
+# Image processing for screenshot scaling
+image = "0.25"
+
+# Date/time for timestamps
+chrono = "0.4"
+
 # Browser automation
 viewpoint-core = { workspace = true }
 viewpoint-cdp = { workspace = true }

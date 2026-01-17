@@ -13,8 +13,8 @@ mod types;
 mod tests;
 
 pub use error::ServerError;
-pub use protocol::McpServer;
-pub use types::ServerConfig;
+pub use protocol::{ContentItem, McpServer, ToolOutput};
+pub use types::{ImageResponseMode, ServerConfig};
 
 /// Result type for server operations
 pub type Result<T> = std::result::Result<T, ServerError>;

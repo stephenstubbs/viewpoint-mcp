@@ -1,4 +1,4 @@
-//! Browser select option tool for selecting dropdown options
+//! Browser scroll into view tool for scrolling elements into the visible viewport
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -8,53 +8,50 @@ use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
-/// Browser select option tool - selects options in a dropdown
-pub struct BrowserSelectOptionTool;
+/// Browser scroll into view tool - scrolls an element into the visible viewport
+pub struct BrowserScrollIntoViewTool;
 
-/// Input parameters for `browser_select_option`
+/// Input parameters for `browser_scroll_into_view`
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BrowserSelectOptionInput {
+pub struct BrowserScrollIntoViewInput {
     /// Element reference from snapshot
     #[serde(rename = "ref")]
     pub element_ref: String,
 
-    /// Human-readable element description
+    /// Human-readable element description for verification
     pub element: String,
-
-    /// Values to select (can be single or multiple for multi-select)
-    pub values: Vec<String>,
 }
 
-impl BrowserSelectOptionTool {
-    /// Create a new browser select option tool
+impl BrowserScrollIntoViewTool {
+    /// Create a new browser scroll into view tool
     #[must_use]
     pub const fn new() -> Self {
         Self
     }
 }
 
-impl Default for BrowserSelectOptionTool {
+impl Default for BrowserScrollIntoViewTool {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait]
-impl Tool for BrowserSelectOptionTool {
+impl Tool for BrowserScrollIntoViewTool {
     fn name(&self) -> &'static str {
-        "browser_select_option"
+        "browser_scroll_into_view"
     }
 
     fn description(&self) -> &'static str {
-        "Select an option in a dropdown element. For multi-select elements, \
-         multiple values can be provided."
+        "Scroll an element into the visible viewport. Useful for bringing elements into view \
+         before taking screenshots or when elements are outside the visible viewport."
     }
 
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
-            "required": ["ref", "element", "values"],
+            "required": ["ref", "element"],
             "properties": {
                 "ref": {
                     "type": "string",
@@ -62,12 +59,7 @@ impl Tool for BrowserSelectOptionTool {
                 },
                 "element": {
                     "type": "string",
-                    "description": "Human-readable description of the dropdown"
-                },
-                "values": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "Values to select (by value attribute or visible text)"
+                    "description": "Human-readable description of the element"
                 }
             }
         })
@@ -75,14 +67,8 @@ impl Tool for BrowserSelectOptionTool {
 
     async fn execute(&self, args: &Value, browser: &mut BrowserState) -> ToolResult {
         // Parse input
-        let input: BrowserSelectOptionInput = serde_json::from_value(args.clone())
+        let input: BrowserScrollIntoViewInput = serde_json::from_value(args.clone())
             .map_err(|e| ToolError::InvalidParams(e.to_string()))?;
-
-        if input.values.is_empty() {
-            return Err(ToolError::InvalidParams(
-                "At least one value must be provided".to_string(),
-            ));
-        }
 
         // Ensure browser is initialized
         browser
@@ -90,7 +76,7 @@ impl Tool for BrowserSelectOptionTool {
             .await
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
 
-        // Get active page
+        // Get active page (need mutable context for cache invalidation)
         let context = browser
             .active_context_mut()
             .map_err(|e| ToolError::BrowserNotAvailable(e.to_string()))?;
@@ -112,31 +98,23 @@ impl Tool for BrowserSelectOptionTool {
             ToolError::ElementNotFound(format!("Element ref '{}': {}", input.element_ref, e))
         })?;
 
-        // Use native ref resolution API from viewpoint 0.2.9
+        // Use native ref resolution API from viewpoint
         let locator = page.locator_from_ref(&input.element_ref);
 
-        // Select the options using the new builder API from viewpoint 0.2.10
-        // Navigation waiting is automatic by default
-        let select_result = if input.values.len() == 1 {
-            locator.select_option().value(&input.values[0]).await
-        } else {
-            let values_slice: Vec<&str> = input.values.iter().map(String::as_str).collect();
-            locator.select_option().values(&values_slice).await
-        };
-
-        select_result.map_err(|e| {
+        // Scroll the element into view
+        locator.scroll_into_view_if_needed().await.map_err(|e| {
             ToolError::ExecutionFailed(format!(
-                "Failed to select option(s) in '{}': {}",
+                "Failed to scroll element '{}' into view: {}",
                 input.element, e
             ))
         })?;
 
-        // Invalidate cache after interaction
+        // Invalidate cache after scroll (DOM may have changed via lazy loading)
         context.invalidate_cache();
 
         Ok(ToolOutput::text(format!(
-            "Selected {:?} in {} [ref={}]",
-            input.values, input.element, input.element_ref
+            "Scrolled {} into view [ref={}]",
+            input.element, input.element_ref
         )))
     }
 }

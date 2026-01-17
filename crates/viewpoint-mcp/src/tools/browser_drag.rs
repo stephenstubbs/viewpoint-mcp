@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 use crate::snapshot::{AccessibilitySnapshot, SnapshotOptions};
 
@@ -128,9 +128,9 @@ impl Tool for BrowserDragTool {
         // Invalidate cache after interaction
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Dragged {} [ref={}] to {} [ref={}]",
             input.start_element, input.start_ref, input.end_element, input.end_ref
-        ))
+        )))
     }
 }

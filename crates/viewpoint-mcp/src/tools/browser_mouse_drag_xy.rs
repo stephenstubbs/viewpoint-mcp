@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::traits::Capability;
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser mouse drag by coordinates tool
@@ -164,9 +164,9 @@ impl Tool for BrowserMouseDragXyTool {
         // Invalidate cache after drag (DOM may have changed)
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Dragged from ({}, {}) to ({}, {}) in {} steps",
             input.start_x, input.start_y, input.end_x, input.end_y, input.steps
-        ))
+        )))
     }
 }

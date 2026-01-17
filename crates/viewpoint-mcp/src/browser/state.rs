@@ -3,6 +3,7 @@
 //! Manages the browser lifecycle and multi-context state across MCP tool calls.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use viewpoint_core::Browser;
 pub use viewpoint_core::ProxyConfig;
@@ -10,6 +11,7 @@ pub use viewpoint_core::ProxyConfig;
 use super::config::BrowserConfig;
 use super::context::ContextState;
 use super::error::BrowserError;
+use crate::server::ImageResponseMode;
 
 /// Default context name
 pub const DEFAULT_CONTEXT: &str = "default";
@@ -49,6 +51,12 @@ pub struct BrowserState {
 
     /// The actual Viewpoint browser instance
     browser: Option<Browser>,
+
+    /// Directory for saving screenshots
+    screenshot_dir: PathBuf,
+
+    /// How screenshot images are returned in responses
+    image_responses: ImageResponseMode,
 }
 
 impl std::fmt::Debug for BrowserState {
@@ -73,7 +81,39 @@ impl BrowserState {
             contexts: HashMap::new(),
             active_context: DEFAULT_CONTEXT.to_string(),
             browser: None,
+            screenshot_dir: PathBuf::from(".viewpoint-mcp-screenshots"),
+            image_responses: ImageResponseMode::default(),
         }
+    }
+
+    /// Create a new browser state manager with screenshot configuration
+    #[must_use]
+    pub fn with_screenshot_config(
+        config: BrowserConfig,
+        screenshot_dir: PathBuf,
+        image_responses: ImageResponseMode,
+    ) -> Self {
+        Self {
+            config,
+            initialized: false,
+            contexts: HashMap::new(),
+            active_context: DEFAULT_CONTEXT.to_string(),
+            browser: None,
+            screenshot_dir,
+            image_responses,
+        }
+    }
+
+    /// Get the screenshot directory
+    #[must_use]
+    pub fn screenshot_dir(&self) -> &PathBuf {
+        &self.screenshot_dir
+    }
+
+    /// Get the image response mode
+    #[must_use]
+    pub const fn image_responses(&self) -> ImageResponseMode {
+        self.image_responses
     }
 
     /// Get the browser configuration

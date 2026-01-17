@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Tool, ToolError, ToolResult};
+use super::{Tool, ToolError, ToolOutput, ToolResult};
 use crate::browser::BrowserState;
 
 /// Browser resize tool - resizes the browser viewport
@@ -121,9 +121,9 @@ impl Tool for BrowserResizeTool {
         // Invalidate cache since the layout may have changed
         context.invalidate_cache();
 
-        Ok(format!(
+        Ok(ToolOutput::text(format!(
             "Resized viewport to {}x{} pixels",
             input.width, input.height
-        ))
+        )))
     }
 }
